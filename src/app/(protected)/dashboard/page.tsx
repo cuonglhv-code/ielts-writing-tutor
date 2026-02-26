@@ -380,16 +380,12 @@ export default function App() {
       ? ["Opinion (To what extent do you agree?)", "Discuss both views and give your opinion", "Problem and solution", "Advantages and disadvantages", "Two direct questions"][Math.floor(Math.random() * 5)]
       : ["Bar chart", "Line graph", "Pie chart", "Table", "Process diagram"][Math.floor(Math.random() * 5)];
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/generate-prompt", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 400,
-          system: "You are an IELTS test writer. Generate an authentic IELTS writing question. Respond with ONLY the question text, no preamble.",
-          messages: [{ role: "user", content: `Generate an authentic IELTS Academic Writing ${taskType === "task2" ? "Task 2" : "Task 1"} question.\nType: ${type}\nTopic: ${topic}\n${taskType === "task1" ? "Include brief chart/graph data in square brackets." : ""}\nWrite exactly as it would appear on an IELTS exam paper.` }]
-        })
+        body: JSON.stringify({ taskType, type, topic })
       });
       const data = await res.json();
-      setCustomPrompt(data.content?.[0]?.text || "");
+      setCustomPrompt(data.text || "");
       setUseCustom(true);
     } catch { setCustomPrompt("Error generating prompt. Please try again."); setUseCustom(true); }
     setAiGenerating(false);
@@ -399,19 +395,22 @@ export default function App() {
     if (wordCount < 20) { setError("Please write at least 20 words before submitting."); return; }
     setLoading(true); setError(""); setFeedback(null);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
+      const res = await fetch("/api/mark", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 2000,
-          system: EXAMINER_SYSTEM,
-          messages: [{ role: "user", content: `IELTS ${taskType === "task2" ? "Writing Task 2" : "Writing Task 1"} Question:\n${currentPrompt.text}\n\nStudent's Essay (${wordCount} words):\n${essay}\n\nMark this essay strictly according to the official IELTS band descriptors. Return ONLY the JSON object.` }]
+          essay,
+          promptText: currentPrompt.text,
+          taskType,
+          wordCount
         })
       });
       const data = await res.json();
-      const raw = data.content?.[0]?.text || "{}";
-      const cleaned = raw.replace(/```json|```/g, "").trim();
-      const parsed = JSON.parse(cleaned);
-      setFeedback(parsed); setSubmitted(true);
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to mark essay");
+      }
+
+      setFeedback(data.feedback); setSubmitted(true);
     } catch (e: unknown) { setError(`Marking error: ${e instanceof Error ? e.message : String(e)}. Please try again.`); }
     setLoading(false);
   };

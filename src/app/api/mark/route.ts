@@ -9,13 +9,6 @@ export async function POST(req: Request) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json(
-      { error: 'Unauthenticated' },
-      { status: 401 },
-    );
-  }
-
   const { essay, promptText, taskType, wordCount } =
     await req.json();
 
@@ -35,11 +28,10 @@ export async function POST(req: Request) {
     messages: [
       {
         role: 'user',
-        content: `IELTS ${
-          taskType === 'task2'
-            ? 'Writing Task 2'
-            : 'Writing Task 1'
-        } Question:\n${promptText}\n\nStudent Essay (${wordCount} words):\n${essay}\n\nMark strictly. Return ONLY the JSON object.`,
+        content: `IELTS ${taskType === 'task2'
+          ? 'Writing Task 2'
+          : 'Writing Task 1'
+          } Question:\n${promptText}\n\nStudent Essay (${wordCount} words):\n${essay}\n\nMark strictly. Return ONLY the JSON object.`,
       },
     ],
   });
@@ -52,20 +44,22 @@ export async function POST(req: Request) {
   const cleaned = raw.replace(/```json\n?|```/g, '').trim();
   const feedback = JSON.parse(cleaned);
 
-  await supabase.from('submissions').insert({
-    student_id: user.id,
-    task_type: taskType,
-    essay_text: essay,
-    word_count: wordCount,
-    overall_band: feedback.overallBand,
-    criteria_scores: {
-      TR: feedback.criteriaScores?.TR?.band,
-      CC: feedback.criteriaScores?.CC?.band,
-      LR: feedback.criteriaScores?.LR?.band,
-      GRA: feedback.criteriaScores?.GRA?.band,
-    },
-    feedback_json: feedback,
-  });
+  if (user) {
+    await supabase.from('submissions').insert({
+      student_id: user.id,
+      task_type: taskType,
+      essay_text: essay,
+      word_count: wordCount,
+      overall_band: feedback.overallBand,
+      criteria_scores: {
+        TR: feedback.criteriaScores?.TR?.band,
+        CC: feedback.criteriaScores?.CC?.band,
+        LR: feedback.criteriaScores?.LR?.band,
+        GRA: feedback.criteriaScores?.GRA?.band,
+      },
+      feedback_json: feedback,
+    });
+  }
 
   return NextResponse.json({ feedback });
 }
