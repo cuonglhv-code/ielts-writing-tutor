@@ -1,28 +1,67 @@
-⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
- We detected multiple lockfiles and selected the directory of C:\Users\cuong\package-lock.json as the root directory.
- To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
-   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
- Detected additional lockfiles: 
-   * C:\Users\cuong\Documents\ielts-writing-tutor\package-lock.json
+Error: Cannot apply unknown utility class `bg-slate-50`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive
+    at onInvalidCandidate (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:21:1314)
+    at Ee (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:16:37066)
+    at C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:21:355
+    at Pr (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:3:1733)
+    at _ (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:3:1377)
+    at Te (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:21:172)
+    at pn (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:38:294)
+    at async dn (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\node_modules\tailwindcss\dist\lib.js:38:631)
+    at async Xr (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\node\dist\index.js:10:3417)
+    at async N (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\@tailwindcss\postcss\dist\index.js:10:3979)
+<w> [webpack.cache.PackFileCacheStrategy] Skipped not serializable cache item 'Compilation/modules|C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[14].oneOf[12].use[2]!C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[14].oneOf[12].use[3]!C:\Users\cuong\Documents\ielts-writing-tutor\src\app\globals.css': No serializer registered for PostCSSSyntaxError
+<w> while serializing webpack/lib/cache/PackFileCacheStrategy.PackContentItems -> webpack/lib/NormalModule -> webpack/lib/ModuleBuildError -> PostCSSSyntaxError
+Failed to compile.
+
+./src/app/globals.css:1:1
+Syntax error: tailwindcss: C:\Users\cuong\Documents\ielts-writing-tutor\src\app\globals.css Cannot apply unknown utility class `bg-slate-50`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive
+
+[1m[31m>[39m[22m[90m 1 | [39m[36m@tailwind[39m base[33m;[39m
+ [90m   | [39m[1m[31m^[39m[22m
+ [90m 2 | [39m[36m@tailwind[39m components[33m;[39m
+ [90m 3 | [39m[36m@tailwind[39m utilities[33m;[39m
+
+./src/app/globals.css
+Syntax error: tailwindcss: C:\Users\cuong\Documents\ielts-writing-tutor\src\app\globals.css Cannot apply unknown utility class `bg-slate-50`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive (1:1)
+
+[1m[31m>[39m[22m[90m 1 | [39m[36m@tailwind[39m base[33m;[39m
+ [90m   | [39m[1m[31m^[39m[22m
+ [90m 2 | [39m[36m@tailwind[39m components[33m;[39m
+ [90m 3 | [39m[36m@tailwind[39m utilities[33m;[39m
+
+    at tryRunOrWebpackError (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:312989)
+    at __webpack_require_module__ (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:131165)
+    at __nested_webpack_require_153728__ (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:130607)
+    at C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:131454
+    at symbolIterator (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\neo-async\async.js:1:14444)
+    at done (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\neo-async\async.js:1:14824)
+    at Hook.eval [as callAsync] (eval at create (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:13:28858), <anonymous>:15:1)
+    at Hook.CALL_ASYNC_DELEGATE [as _callAsync] (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:13:26012)
+    at C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:130328
+    at symbolIterator (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\neo-async\async.js:1:14402)
+-- inner error --
+Syntax error: tailwindcss: C:\Users\cuong\Documents\ielts-writing-tutor\src\app\globals.css Cannot apply unknown utility class `bg-slate-50`. Are you using CSS modules or similar and missing `@reference`? https://tailwindcss.com/docs/functions-and-directives#reference-directive (1:1)
+
+[1m[31m>[39m[22m[90m 1 | [39m[36m@tailwind[39m base[33m;[39m
+ [90m   | [39m[1m[31m^[39m[22m
+ [90m 2 | [39m[36m@tailwind[39m components[33m;[39m
+ [90m 3 | [39m[36m@tailwind[39m utilities[33m;[39m
+
+    at Object.<anonymous> (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[14].oneOf[12].use[2]!C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[14].oneOf[12].use[3]!C:\Users\cuong\Documents\ielts-writing-tutor\src\app\globals.css:1:7)
+    at C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:922493
+    at Hook.eval [as call] (eval at create (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:13:28636), <anonymous>:7:1)
+    at Hook.CALL_DELEGATE [as _call] (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:13:25906)
+    at C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:131198
+    at tryRunOrWebpackError (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:312943)
+    at __webpack_require_module__ (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:131165)
+    at __nested_webpack_require_153728__ (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:130607)
+    at C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\webpack\bundle5.js:28:131454
+    at symbolIterator (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\compiled\neo-async\async.js:1:14444)
+
+Generated code for C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\build\webpack\loaders\css-loader\src\index.js??ruleSet[1].rules[14].oneOf[12].use[2]!C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\next\dist\build\webpack\loaders\postcss-loader\src\index.js??ruleSet[1].rules[14].oneOf[12].use[3]!C:\Users\cuong\Documents\ielts-writing-tutor\src\app\globals.css
+
+Import trace for requested module:
+./src/app/globals.css
 
 
-> Build error occurred
-Error: Turbopack build failed with 1 errors:
-./Documents/ielts-writing-tutor/src/app/globals.css
-Error evaluating Node.js code
-Error: It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin. The PostCSS plugin has moved to a separate package, so to continue using Tailwind CSS with PostCSS you'll need to install `@tailwindcss/postcss` and update your PostCSS configuration.
-    [at at (C:\Users\cuong\Documents\ielts-writing-tutor\node_modules\tailwindcss\dist\lib.js:38:1643)]
-    at turbopack:///[turbopack-node]/transforms/postcss.ts:56:14 [C:\Users\cuong\Documents\ielts-writing-tutor\.next\build\chunks\[root-of-the-server]__0737eceb._.js:139:20]
-    [at <anonymous>]
-    at Module.init (turbopack:///[turbopack-node]/transforms/postcss.ts:43:33) [C:\Users\cuong\Documents\ielts-writing-tutor\.next\build\chunks\[root-of-the-server]__0737eceb._.js:129:35]
-    at run (turbopack:///[turbopack-node]/ipc/evaluate.ts:77:20) [C:\Users\cuong\Documents\ielts-writing-tutor\.next\build\chunks\[root-of-the-server]__ea33cdd4._.js:429:26]
-    [at process.processTicksAndRejections (node:internal/process/task_queues:104:5)]
-
-Import trace:
-  Client Component Browser:
-    ./Documents/ielts-writing-tutor/src/app/globals.css [Client Component Browser]
-    ./Documents/ielts-writing-tutor/src/app/layout.tsx [Server Component]
-
-
-    at Module.init (turbopack:///[turbopack-node]/transforms/postcss.ts:43:33) [C:\Users\cuong\Documents\ielts-writing-tutor\.next\build\chunks\[root-of-the-server]__0737eceb._.js:129:35])
-    at run (turbopack:///[turbopack-node]/ipc/evaluate.ts:77:20) [C:\Users\cuong\Documents\ielts-writing-tutor\.next\build\chunks\[root-of-the-server]__ea33cdd4._.js:429:26])
+> Build failed because of webpack errors
