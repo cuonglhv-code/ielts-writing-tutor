@@ -23,15 +23,38 @@ function LoginForm() {
       password,
     });
 
-    setLoading(null);
+    // If invalid login credentials (meaning account doesn't exist yet in the testing DB!)
+    if (signInError && signInError.message.includes('Invalid login credentials')) {
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+      });
 
-    // If there is any database schema error from Supabase, ignore it and just redirect
-    // because the auth session was actually created locally! Focus on front-end.
-    if (signInError && !signInError.message.includes('schema')) {
+      // We might get a "schema error" from the user's local auth trigger, ignore it!
+      if (signUpError && !signUpError.message.includes('schema')) {
+        setLoading(null);
+        setError(`Failed to create testing user: ${signUpError.message}`);
+        return;
+      }
+
+      // Try signing in ONE MORE TIME after signing up
+      const { error: retrySignInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (retrySignInError && !retrySignInError.message.includes('schema')) {
+        setLoading(null);
+        setError(retrySignInError.message);
+        return;
+      }
+    } else if (signInError && !signInError.message.includes('schema')) {
+      setLoading(null);
       setError(signInError.message);
       return;
     }
 
+    setLoading(null);
     router.push('/dashboard');
   }
 
