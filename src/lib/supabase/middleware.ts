@@ -30,15 +30,11 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = ['/login', '/register', '/auth'].some((p) =>
-    path.startsWith(p),
-  );
 
-  if (!user && !isPublic) {
-    return NextResponse.redirect(new URL('/login', request.url));
-  }
+  // Let's remove the auth protection
+  // If the user is on the site, just let them in.
 
-  if (user && !isPublic) {
+  if (user) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarded, role')
@@ -56,6 +52,11 @@ export async function updateSession(request: NextRequest) {
     ) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
+  }
+
+  // Redirect /login back to the main app if they try to access login
+  if (path.startsWith('/login') || path === '/') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
   return supabaseResponse;
