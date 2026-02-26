@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { Suspense, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/Field';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
@@ -24,10 +24,11 @@ export default function LoginPage() {
     setLoading(true);
     const supabase = createClient();
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error: signInError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
     setLoading(false);
 
@@ -46,7 +47,8 @@ export default function LoginPage() {
           Jaxtina IELTS Writing Tutor
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Sign in to practise IELTS Writing and see your feedback history.
+          Sign in to practise IELTS Writing and see your feedback
+          history.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -97,5 +99,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm">Loading…</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
