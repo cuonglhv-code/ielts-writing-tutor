@@ -1,582 +1,924 @@
+// @ts-nocheck
 "use client";
-import { useState, useEffect, useRef } from "react";
 
-// ─── BAND DESCRIPTOR SYSTEM PROMPT ────────────────────────────────────────────
-const EXAMINER_SYSTEM = `You are a Senior IELTS Examiner with 15+ years of experience, trained by the British Council and Cambridge Assessment English. You mark Writing tasks strictly according to the official IELTS band descriptors (public version, updated 2023). You are authoritative, precise, and constructive — like a professional examiner at an official marking centre.
+import { useState, useEffect, useCallback } from "react";
+import {
+  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis
+} from "recharts";
 
-=== OFFICIAL IELTS BAND DESCRIPTORS ===
+// ── Constants ──────────────────────────────────────────────────────────────
+const BAND_DESCRIPTORS = {
+  5: { TA: "Incompletely addressed; limited development.", CC: "Not fully logical; cohesive devices limited.", LR: "Limited lexis; frequent errors.", GRA: "Limited structures; frequent errors." },
+  6: { TA: "Main parts addressed but unevenly; ideas underdeveloped.", CC: "Generally coherent; cohesion mechanical.", LR: "Generally adequate; some imprecision.", GRA: "Mix of forms; accuracy drops in complex sentences." },
+  7: { TA: "Appropriately addressed; clear developed position.", CC: "Logically organised; cohesive devices flexible.", LR: "Sufficient range; less common items used.", GRA: "Variety of complex structures; well controlled." },
+  8: { TA: "Sufficiently addressed; well-developed position.", CC: "Logically sequenced; cohesion well managed.", LR: "Wide resource used fluently and flexibly.", GRA: "Wide range; majority error-free." }
+};
+const CHART_TYPES = ["Bar Chart", "Line Graph", "Pie Chart", "Table", "Process Diagram", "Map Comparison"];
+const TASK2_TYPES = ["Opinion (Agree/Disagree)", "Discussion (Both Views)", "Problem & Solution", "Advantages & Disadvantages", "Two-Part Question"];
+const TOPICS = ["Education", "Technology", "Environment", "Health", "Society", "Economy", "Transport", "Culture", "Crime", "Media", "Other"];
+const DIFFICULTIES = ["Band 5–6", "Band 6–7", "Band 7–8"];
+const COLORS = ["#60a5fa", "#34d399", "#fbbf24", "#f87171", "#a78bfa", "#fb923c", "#22d3ee"];
+const VISUAL_TYPES = ["Bar Chart", "Line Graph", "Pie Chart", "Table"];
 
-TASK 2 – Four criteria, each worth 25%:
+const bandColor = b => b >= 7.5 ? "#34d399" : b >= 6.5 ? "#60a5fa" : b >= 5.5 ? "#fbbf24" : "#f87171";
+const criteriaKeys = [
+  { key: "TA", label: "Task Achievement" },
+  { key: "CC", label: "Coherence & Cohesion" },
+  { key: "LR", label: "Lexical Resource" },
+  { key: "GRA", label: "Grammatical Range & Accuracy" }
+];
+const STORAGE_KEY = "ielts_question_bank";
+const uid = () => Math.random().toString(36).slice(2, 9);
 
-TASK RESPONSE (TR):
-Band 9: Fully addresses all parts. Fully developed position with relevant, fully extended and well-supported ideas.
-Band 8: Sufficiently addresses all parts. Well-developed response with relevant, extended and supported ideas.
-Band 7: Addresses all parts. Clear position throughout. Extends and supports main ideas but may over-generalise or lack focus.
-Band 6: Addresses all parts though some may be more fully covered. Relevant position but conclusions may be unclear/repetitive. Main ideas present but some inadequately developed.
-Band 5: Addresses task only partially. Position expressed but development not always clear. Main ideas limited and not sufficiently developed; may have irrelevant detail.
-Band 4: Responds minimally or tangentially. Position unclear. Main ideas difficult to identify, repetitive or unsupported.
-
-COHERENCE & COHESION (CC):
-Band 9: Cohesion attracts no attention. Skilfully manages paragraphing.
-Band 8: Sequences information logically. Manages all aspects of cohesion well. Paragraphing sufficient and appropriate.
-Band 7: Logically organises ideas, clear progression. Uses cohesive devices appropriately (some under/over-use). Clear central topic within each paragraph.
-Band 6: Coherent arrangement with clear overall progression. Cohesive devices used effectively but may be faulty or mechanical within/between sentences. Paragraphing used but not always logically.
-Band 5: Some organisation but lack of overall progression. Inadequate/inaccurate/over-use of cohesive devices. Repetitive due to lack of referencing. May not write in paragraphs.
-Band 4: Ideas not arranged coherently, no clear progression. Basic cohesive devices, inaccurate or repetitive. May not write in paragraphs.
-
-LEXICAL RESOURCE (LR):
-Band 9: Wide range with very natural and sophisticated control. Rare minor errors only as slips.
-Band 8: Wide range, fluent and flexible for precise meanings. Skilful use of uncommon lexis, occasional inaccuracies in collocation. Rare spelling errors.
-Band 7: Sufficient range for flexibility and precision. Less common lexis with awareness of style/collocation. Occasional errors in word choice/spelling/word formation.
-Band 6: Adequate range. Attempts less common vocabulary with some inaccuracy. Some spelling/word formation errors not impeding communication.
-Band 5: Limited range, minimally adequate. Noticeable spelling/word formation errors causing some difficulty.
-Band 4: Basic vocabulary, repetitive or inappropriate. Limited control of word formation/spelling; errors cause strain.
-
-GRAMMATICAL RANGE & ACCURACY (GRA):
-Band 9: Wide range of structures, full flexibility and accuracy. Rare minor errors only as slips.
-Band 8: Wide range of structures. Majority of sentences error-free. Very occasional errors.
-Band 7: Variety of complex structures. Frequent error-free sentences. Good control of grammar and punctuation with a few errors.
-Band 6: Mix of simple and complex sentence forms. Some grammar and punctuation errors rarely reducing communication.
-Band 5: Limited range of structures. Complex sentences less accurate than simple. Frequent grammatical errors; punctuation may be faulty.
-Band 4: Very limited range, rare subordinate clauses. Errors predominate, punctuation often faulty.
-
-TASK 1 – TASK ACHIEVEMENT (TA) instead of Task Response:
-Band 9: Fully satisfies all requirements. Fully developed response.
-Band 8: Covers all requirements sufficiently. Presents, highlights and illustrates key features clearly and appropriately.
-Band 7: Covers requirements. Presents clear overview of main trends/differences/stages. Clearly presents and highlights key features but could be more fully extended.
-Band 6: Addresses requirements. Presents overview with appropriately selected information. Adequately highlights key features but details may be irrelevant/inappropriate.
-Band 5: Generally addresses task. Recounts detail mechanically with no clear overview. Inadequately covers key features; tendency to focus on details.
-Band 4: Attempts to address task but does not cover all key features. May confuse key features with detail.
-
-BAND SCORE ROUNDING RULES:
-- Average the four criteria scores
-- If the average ends in .25, round DOWN to the nearest .5
-- If the average ends in .75, round UP to the nearest .5
-- 6+6+7+7 = 6.5; 6+7+7+7 = 7.0; 5+6+6+7 = 6.0
-
-IELTS LIZ & SIMON EXAMINER PRINCIPLES:
-1. Word count matters: Task 1 < 150 words → automatic penalty (likely -0.5 band on TA); Task 2 < 250 words → penalty
-2. Off-topic response: TR/TA capped at Band 5 maximum
-3. Copied question rubric is discounted from word count
-4. Memorised responses: flag and cap at Band 4
-5. Task 2 carries double the weight of Task 1 in the overall Writing band score
-6. Address ALL parts of the task question — a missing part caps TR at Band 5
-
-=== YOUR MARKING PROTOCOL ===
-When marking, you must:
-1. Read the full essay carefully before scoring
-2. Apply the descriptor HOLISTICALLY — find the band that best describes the overall performance on each criterion
-3. Give half-band scores (e.g. 6.5) when performance falls between two bands
-4. Be strict and calibrated — most candidates do NOT achieve Band 7+
-5. NEVER inflate scores to encourage students
-
-OUTPUT FORMAT — respond ONLY with this exact JSON (no markdown, no preamble):
-{
-  "taskType": "Task 1" or "Task 2",
-  "wordCount": number,
-  "wordCountNote": "string — comment on word count",
-  "criteriaScores": {
-    "TR": { "band": number, "label": "Task Response" or "Task Achievement", "feedback": "string — 3-4 sentences of specific, evidence-based feedback citing exact phrases from the essay" },
-    "CC": { "band": number, "label": "Coherence & Cohesion", "feedback": "string — 3-4 sentences" },
-    "LR": { "band": number, "label": "Lexical Resource", "feedback": "string — 3-4 sentences. Cite specific good/weak vocabulary from the essay" },
-    "GRA": { "band": number, "label": "Grammatical Range & Accuracy", "feedback": "string — 3-4 sentences. Quote specific errors if present" }
+// ── Seed questions ─────────────────────────────────────────────────────────
+const SEED_QUESTIONS = [
+  {
+    id: "seed-1", task: "Task 1", chartType: "Bar Chart", topic: "Education", difficulty: "Band 6–7",
+    question: "The bar chart below shows the percentage of students enrolled in three types of higher education in five countries in 2020. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.",
+    chartData: {
+      title: "Student Enrolment in Higher Education by Country (2020)",
+      xAxisLabel: "Country", yAxisLabel: "Percentage (%)", unit: "%",
+      series: [
+        { name: "University", color: "#60a5fa", data: [{ label: "UK", value: 65 }, { label: "USA", value: 70 }, { label: "Japan", value: 58 }, { label: "Brazil", value: 45 }, { label: "India", value: 38 }] },
+        { name: "Vocational", color: "#34d399", data: [{ label: "UK", value: 25 }, { label: "USA", value: 20 }, { label: "Japan", value: 32 }, { label: "Brazil", value: 38 }, { label: "India", value: 42 }] }
+      ],
+      keyFeatures: ["UK and USA lead in university enrolment", "India has highest vocational proportion", "Japan shows balanced distribution"]
+    }
   },
-  "overallBand": number,
-  "examinerSummary": "string — 4-5 sentence authoritative examiner summary: strengths, primary weaknesses, and single most impactful improvement",
-  "priorityImprovements": [
-    "string — specific, actionable improvement with example",
-    "string",
-    "string"
-  ],
-  "modelParagraph": "string — one improved paragraph rewritten by the examiner to demonstrate Band 7+ writing on the same point (50-80 words)",
-  "comparativeLevel": "string — e.g. 'This response is consistent with a Band 6.0 candidate who has some flexibility in vocabulary but struggles with task focus.'"
-}`;
-
-// ─── PROMPTS DATA ──────────────────────────────────────────────────────────────
-const T2_PROMPTS = [
-  { id: "t2_1", type: "Opinion", text: "Some people believe that the best way to improve public health is by increasing the number of sports facilities. Others, however, think that this would have little effect on public health and that other measures are required. Discuss both views and give your own opinion." },
-  { id: "t2_2", type: "Problem/Solution", text: "In many cities, the amount of traffic is increasing, causing problems of pollution and gridlock. What are the causes of this problem? What measures could be taken to reduce it?" },
-  { id: "t2_3", type: "Two-Part Question", text: "Many people believe that social media has had a profoundly negative effect on individuals and society. To what extent do you agree or disagree? What changes do you think social media companies should make?" },
-  { id: "t2_4", type: "Advantages/Disadvantages", text: "In many countries, more and more people are choosing to work from home rather than commute to an office. What are the advantages and disadvantages of this trend?" },
-  { id: "t2_5", type: "Direct Question", text: "In some countries, young people are encouraged to work or travel for a year between finishing high school and starting university studies. Discuss the advantages and disadvantages for young people who decide to do this." },
+  {
+    id: "seed-2", task: "Task 1", chartType: "Line Graph", topic: "Environment", difficulty: "Band 6–7",
+    question: "The line graph below shows average annual CO₂ emissions per person in four countries between 1990 and 2020. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.",
+    chartData: {
+      title: "CO₂ Emissions per Capita 1990–2020 (tonnes)",
+      xAxisLabel: "Year", yAxisLabel: "Tonnes per person", unit: "tonnes",
+      series: [
+        { name: "USA", color: "#f87171", data: [{ label: "1990", value: 19.2 }, { label: "1995", value: 19.8 }, { label: "2000", value: 20.1 }, { label: "2005", value: 19.5 }, { label: "2010", value: 17.6 }, { label: "2015", value: 16.4 }, { label: "2020", value: 14.2 }] },
+        { name: "China", color: "#fbbf24", data: [{ label: "1990", value: 2.1 }, { label: "1995", value: 2.8 }, { label: "2000", value: 3.1 }, { label: "2005", value: 4.5 }, { label: "2010", value: 6.2 }, { label: "2015", value: 7.1 }, { label: "2020", value: 7.4 }] },
+        { name: "Germany", color: "#60a5fa", data: [{ label: "1990", value: 12.8 }, { label: "1995", value: 11.2 }, { label: "2000", value: 10.4 }, { label: "2005", value: 9.8 }, { label: "2010", value: 9.1 }, { label: "2015", value: 8.5 }, { label: "2020", value: 7.3 }] },
+        { name: "India", color: "#34d399", data: [{ label: "1990", value: 0.8 }, { label: "1995", value: 0.9 }, { label: "2000", value: 1.1 }, { label: "2005", value: 1.3 }, { label: "2010", value: 1.6 }, { label: "2015", value: 1.8 }, { label: "2020", value: 1.9 }] }
+      ],
+      keyFeatures: ["USA consistently highest but declining", "China shows dramatic rise", "India lowest throughout", "Germany steady decline"]
+    }
+  },
+  {
+    id: "seed-3", task: "Task 1", chartType: "Pie Chart", topic: "Society", difficulty: "Band 5–6",
+    question: "The pie chart below shows how the average household in the UK spent its income in 2022. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.",
+    chartData: {
+      title: "UK Average Household Expenditure 2022",
+      unit: "%",
+      series: [
+        { name: "Spending", color: "#60a5fa", data: [{ label: "Housing", value: 28 }, { label: "Food", value: 18 }, { label: "Transport", value: 14 }, { label: "Leisure", value: 12 }, { label: "Clothing", value: 8 }, { label: "Health", value: 7 }, { label: "Other", value: 13 }] }
+      ],
+      keyFeatures: ["Housing is largest expenditure", "Food and transport together account for nearly a third", "Health is the smallest named category"]
+    }
+  },
+  {
+    id: "seed-4", task: "Task 1", chartType: "Table", topic: "Economy", difficulty: "Band 7–8",
+    question: "The table below shows GDP growth rate (%), unemployment rate (%), and inflation rate (%) for five countries in 2023. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.",
+    chartData: {
+      title: "Economic Indicators by Country (2023)",
+      yAxisLabel: "Economic indicators",
+      series: [
+        { name: "GDP Growth (%)", data: [{ label: "UK", value: 0.4 }, { label: "USA", value: 2.5 }, { label: "Japan", value: 1.9 }, { label: "Germany", value: -0.3 }, { label: "India", value: 6.8 }] },
+        { name: "Unemployment (%)", data: [{ label: "UK", value: 4.2 }, { label: "USA", value: 3.7 }, { label: "Japan", value: 2.6 }, { label: "Germany", value: 5.5 }, { label: "India", value: 7.9 }] },
+        { name: "Inflation (%)", data: [{ label: "UK", value: 6.8 }, { label: "USA", value: 4.1 }, { label: "Japan", value: 3.2 }, { label: "Germany", value: 5.9 }, { label: "India", value: 5.4 }] }
+      ],
+      keyFeatures: ["India leads in GDP growth", "Germany is the only country with negative growth", "Japan has lowest unemployment", "UK has highest inflation"]
+    }
+  },
+  {
+    id: "seed-5", task: "Task 2", chartType: null, essayType: "Opinion (Agree/Disagree)", topic: "Technology", difficulty: "Band 6–7",
+    question: "Some people believe that technology has made our lives more complicated. To what extent do you agree or disagree? Give reasons for your answer and include any relevant examples from your own knowledge or experience.",
+    chartData: null
+  },
+  {
+    id: "seed-6", task: "Task 2", chartType: null, essayType: "Discussion (Both Views)", topic: "Education", difficulty: "Band 7–8",
+    question: "Some people think that universities should focus on providing academic knowledge, while others believe they should prepare students for employment. Discuss both views and give your own opinion.",
+    chartData: null
+  },
+  {
+    id: "seed-7", task: "Task 2", chartType: null, essayType: "Problem & Solution", topic: "Environment", difficulty: "Band 6–7",
+    question: "Many cities around the world are facing serious problems with air pollution. What are the main causes of this problem and what measures could be taken to address it?",
+    chartData: null
+  }
 ];
 
-const T1_PROMPTS = [
-  { id: "t1_1", type: "Bar Chart", text: "The bar chart below shows the percentage of students achieving a band score of 7 or above in each IELTS section (Reading, Listening, Writing, Speaking) at three language schools in Ho Chi Minh City in 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[Chart data: Jaxtina: R=48%, L=52%, W=31%, S=38% | British Council: R=55%, L=60%, W=40%, S=42% | IDP: R=42%, L=45%, W=28%, S=35%]" },
-  { id: "t1_2", type: "Line Graph", text: "The graph below shows changes in the number of students enrolled in English language courses in Vietnam between 2015 and 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[Data: 2015: 180,000 | 2017: 220,000 | 2019: 310,000 | 2021: 280,000 (COVID dip) | 2022: 340,000 | 2024: 520,000]" },
-  { id: "t1_3", type: "Pie Chart", text: "The two pie charts below show how students at a language school spent their self-study time in 2010 and 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[2010: Grammar: 35%, Vocabulary: 25%, Reading: 20%, Listening: 15%, Speaking practice: 5%] [2024: Online apps: 30%, Speaking practice: 22%, Listening: 20%, Grammar: 15%, Reading: 8%, Vocabulary: 5%]" },
-];
+// ── Storage helpers ────────────────────────────────────────────────────────
+async function loadBank() {
+  try {
+    const r = await window.storage.get(STORAGE_KEY);
+    return r ? JSON.parse(r.value) : null;
+  } catch { return null; }
+}
+async function saveBank(questions) {
+  try { await window.storage.set(STORAGE_KEY, JSON.stringify(questions)); } catch { }
+}
 
-const WRITING_TIPS = [
-  { source: "IELTSLiz", title: "Task 2 – Essay Structure", tip: "Introduction (2 sentences: paraphrase + thesis) → Body 1 (topic sentence + explain + example) → Body 2 → Conclusion. Never copy the question." },
-  { source: "IELTSLiz", title: "Task Achievement – Most Common Mistake", tip: "Failing to address ALL parts of the question. A 'discuss both views' essay MUST have both views AND your opinion. Missing any part caps your TR at Band 5." },
-  { source: "IELTS Simon", title: "Vocabulary – Simon's Method", tip: "Collocations beat single word synonyms. Instead of 'good' → try 'beneficial', 'advantageous', 'conducive to'. Learn verbs + nouns together: 'tackle the issue', 'alleviate pressure', 'foster development'." },
-  { source: "IELTS Simon", title: "Coherence – Paragraph Structure", tip: "Each body paragraph = 1 main idea only. Start with a clear topic sentence. Use discourse markers sparingly: Furthermore, However, In contrast. Overuse of 'Additionally' and 'Moreover' will lower your CC score." },
-  { source: "IELTSLiz", title: "Task 1 – Overview is Essential", tip: "The overview is the most important paragraph in Task 1. Write it in the introduction or as a separate paragraph. Missing an overview almost always results in Band 5 for Task Achievement." },
-  { source: "IELTS Simon", title: "Grammar – Range vs Accuracy", tip: "Do not sacrifice accuracy for complexity. A Band 7 essay with some complex sentences and few errors beats a Band 5 essay with many complex sentences and many errors." },
-  { source: "IELTSLiz", title: "Band 7 Checklist", tip: "✓ All parts of task addressed ✓ Clear overview (T1) or clear opinion (T2) ✓ Ideas extended with examples ✓ Paragraphs with clear central topic ✓ Mix of simple + complex sentences ✓ Some less common vocabulary used accurately ✓ Min 150/250 words" },
-  { source: "IELTS Simon", title: "Word Count Warning", tip: "Do NOT write more than 300 words for Task 2. Quality over quantity. Examiners are not impressed by length — they look for ideas, coherence and language accuracy." },
-];
-
-// ─── HELPERS ───────────────────────────────────────────────────────────────────
-const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
-const bandColor = (b: number) => b >= 7 ? "text-teal-600" : b >= 6 ? "text-indigo-600" : b >= 5 ? "text-amber-600" : "text-red-600";
-const bandBg = (b: number) => b >= 7 ? "bg-teal-50 border-teal-200" : b >= 6 ? "bg-indigo-50 border-indigo-200" : b >= 5 ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
-const bandLabel = (b: number) => b >= 8 ? "Expert" : b >= 7 ? "Good User" : b >= 6 ? "Competent" : b >= 5 ? "Modest" : b >= 4 ? "Limited" : "Extremely Limited";
-
-function Timer({ secs, running, onEnd }: { secs: number, running: boolean, onEnd: () => void }) {
-  const [t, setT] = useState(secs);
-  const ref = useRef<NodeJS.Timeout>(null as unknown as NodeJS.Timeout);
-  const onEndRef = useRef(onEnd);
-
-  useEffect(() => {
-    onEndRef.current = onEnd;
-  }, [onEnd]);
-
-  useEffect(() => {
-    if (!running) { clearInterval(ref.current as NodeJS.Timeout); return; }
-    ref.current = setInterval(() => setT(p => { if (p <= 1) { clearInterval(ref.current as NodeJS.Timeout); onEndRef.current(); return 0; } return p - 1; }), 1000);
-    return () => clearInterval(ref.current as NodeJS.Timeout);
-  }, [running]);
-  const m = Math.floor(t / 60), s = t % 60;
-  const pct = (t / secs) * 100;
-  const urgent = t < 300;
+// ── Chart renderers ────────────────────────────────────────────────────────
+function renderBarChart(cd) {
+  const labels = cd.series[0].data.map(d => d.label);
+  const data = labels.map((lbl, i) => { const row = { label: lbl }; cd.series.forEach(s => { row[s.name] = s.data[i]?.value ?? 0; }); return row; });
   return (
-    <div className="flex items-center gap-2">
-      <div className="relative w-8 h-8">
-        <svg className="w-8 h-8 -rotate-90" viewBox="0 0 32 32">
-          <circle cx="16" cy="16" r="13" fill="none" stroke="#e2e8f0" strokeWidth="3" />
-          <circle cx="16" cy="16" r="13" fill="none" stroke={urgent ? "#ef4444" : "#0d9488"} strokeWidth="3"
-            strokeDasharray={`${2 * Math.PI * 13}`} strokeDashoffset={`${2 * Math.PI * 13 * (1 - pct / 100)}`}
-            strokeLinecap="round" className="transition-all duration-1000" />
-        </svg>
-      </div>
-      <span className={`font-mono text-sm font-bold ${urgent ? "text-red-600 animate-pulse" : "text-slate-600"}`}>
-        {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
-      </span>
+    <div>
+      <div className="text-xs text-center text-gray-400 mb-1 font-medium">{cd.title}</div>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 5, right: 15, left: 0, bottom: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <XAxis dataKey="label" tick={{ fill: "#9ca3af", fontSize: 10 }} angle={-30} textAnchor="end" interval={0} />
+          <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} label={{ value: cd.yAxisLabel || "", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 9, dx: -5 }} />
+          <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8, fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
+          {cd.series.map((s, i) => <Bar key={s.name} dataKey={s.name} fill={s.color || COLORS[i]} radius={[3, 3, 0, 0]} />)}
+        </BarChart>
+      </ResponsiveContainer>
+      {cd.xAxisLabel && <div className="text-xs text-center text-gray-500 mt-1">{cd.xAxisLabel}</div>}
     </div>
   );
 }
-
-function BandGauge({ band }: { band: number }) {
-  const pct = ((band - 1) / 8) * 100;
-  const color = band >= 7 ? "#0d9488" : band >= 6 ? "#6366f1" : band >= 5 ? "#f59e0b" : "#ef4444";
+function renderLineChart(cd) {
+  const labels = cd.series[0].data.map(d => d.label);
+  const data = labels.map((lbl, i) => { const row = { label: lbl }; cd.series.forEach(s => { row[s.name] = s.data[i]?.value ?? 0; }); return row; });
   return (
-    <div className="relative w-32 h-16 overflow-hidden">
-      <svg viewBox="0 0 120 60" className="w-full">
-        <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#e2e8f0" strokeWidth="10" strokeLinecap="round" />
-        <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke={color} strokeWidth="10" strokeLinecap="round"
-          strokeDasharray={`${Math.PI * 50}`} strokeDashoffset={`${Math.PI * 50 * (1 - pct / 100)}`} />
-        <text x="60" y="58" textAnchor="middle" fontSize="18" fontWeight="bold" fill={color}>{band}</text>
-      </svg>
+    <div>
+      <div className="text-xs text-center text-gray-400 mb-1 font-medium">{cd.title}</div>
+      <ResponsiveContainer width="100%" height={200}>
+        <LineChart data={data} margin={{ top: 5, right: 15, left: 0, bottom: 30 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <XAxis dataKey="label" tick={{ fill: "#9ca3af", fontSize: 10 }} angle={-30} textAnchor="end" interval={0} />
+          <YAxis tick={{ fill: "#9ca3af", fontSize: 10 }} label={{ value: cd.yAxisLabel || "", angle: -90, position: "insideLeft", fill: "#6b7280", fontSize: 9, dx: -5 }} />
+          <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8, fontSize: 11 }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: "#9ca3af" }} />
+          {cd.series.map((s, i) => <Line key={s.name} type="monotone" dataKey={s.name} stroke={s.color || COLORS[i]} strokeWidth={2} dot={{ r: 3 }} />)}
+        </LineChart>
+      </ResponsiveContainer>
+      {cd.xAxisLabel && <div className="text-xs text-center text-gray-500 mt-1">{cd.xAxisLabel}</div>}
     </div>
   );
 }
-
-// ─── FEEDBACK DISPLAY ──────────────────────────────────────────────────────────
-function FeedbackPanel({ feedback }: { feedback: Record<string, unknown> }) {
-  const [tab, setTab] = useState("overview");
-  const f = feedback as {
-    overallBand: number;
-    taskType: string;
-    wordCount: number;
-    wordCountNote?: string;
-    criteriaScores: Record<string, { band: number; label: string; feedback: string }>;
-    examinerSummary: string;
-    comparativeLevel: string;
-    priorityImprovements?: string[];
-    modelParagraph: string;
-  };
-  const criteria = Object.entries(f.criteriaScores);
-
+function renderPieChart(cd) {
+  const data = cd.series[0].data.map((d, i) => ({ name: d.label, value: d.value, fill: COLORS[i % COLORS.length] }));
   return (
-    <div className="space-y-5">
-      {/* Overall Score Header */}
-      <div className="bg-gradient-to-r from-teal-600 to-indigo-700 rounded-2xl p-5 text-white">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <p className="text-teal-200 text-xs font-semibold uppercase tracking-widest">Senior Examiner Assessment</p>
-            <h2 className="text-2xl font-black mt-0.5">Overall Band: {f.overallBand}</h2>
-            <p className="text-teal-100 text-sm">{bandLabel(f.overallBand)} · {f.taskType} · {f.wordCount} words</p>
-          </div>
-          <div className="bg-white/10 rounded-2xl p-3 text-center">
-            <p className="text-4xl font-black">{f.overallBand}</p>
-            <p className="text-xs text-teal-100 mt-0.5">{bandLabel(f.overallBand)}</p>
-          </div>
-        </div>
-        {f.wordCountNote && (
-          <div className={`text-xs px-3 py-2 rounded-lg ${f.wordCount < 150 || (f.taskType === "Task 2" && f.wordCount < 250) ? "bg-red-400/30 text-red-100" : "bg-white/10 text-teal-100"}`}>
-            📝 {f.wordCountNote}
-          </div>
-        )}
-      </div>
-
-      {/* 4 Criteria Cards */}
-      <div className="grid grid-cols-2 gap-3">
-        {criteria.map(([key, c]: [string, { band: number; label: string; feedback: string }]) => (
-          <div key={key} className={`rounded-xl border p-3 ${bandBg(c.band)}`}>
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{key}</p>
-              <span className={`text-xl font-black ${bandColor(c.band)}`}>{c.band}</span>
-            </div>
-            <p className="text-xs font-semibold text-slate-700 mb-1">{c.label}</p>
-            <div className="h-1.5 bg-white/60 rounded-full">
-              <div className="h-1.5 rounded-full transition-all" style={{ width: `${((c.band - 1) / 8) * 100}%`, background: c.band >= 7 ? "#0d9488" : c.band >= 6 ? "#6366f1" : c.band >= 5 ? "#f59e0b" : "#ef4444" }} />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-        {[["overview", "📋 Overview"], ["criteria", "🔍 Criteria"], ["improve", "🎯 Improve"], ["model", "✍️ Model"]].map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab === k ? "bg-white text-teal-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-            {l}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab content */}
-      {tab === "overview" && (
-        <div className="space-y-3">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Examiner&apos;s Summary</p>
-            <p className="text-sm text-slate-700 leading-relaxed">{f.examinerSummary}</p>
-          </div>
-          <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-            <p className="text-xs font-bold text-indigo-600 uppercase tracking-wide mb-2">Comparative Level</p>
-            <p className="text-sm text-indigo-800">{f.comparativeLevel}</p>
-          </div>
-          {/* Band progression */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Band Score Breakdown</p>
-            <div className="space-y-2">
-              {criteria.map(([key, c]: [string, { band: number; label: string; feedback: string }]) => (
-                <div key={key} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-500 w-8 font-mono">{key}</span>
-                  <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-3 rounded-full transition-all" style={{ width: `${((c.band - 1) / 8) * 100}%`, background: c.band >= 7 ? "#0d9488" : c.band >= 6 ? "#6366f1" : c.band >= 5 ? "#f59e0b" : "#ef4444" }} />
-                  </div>
-                  <span className={`text-sm font-bold w-8 text-right ${bandColor(c.band)}`}>{c.band}</span>
-                  <span className="text-xs text-slate-400 w-20">{bandLabel(c.band)}</span>
-                </div>
-              ))}
-              <div className="flex items-center gap-3 pt-2 border-t border-slate-100 mt-2">
-                <span className="text-xs font-bold text-slate-700 w-8">AVG</span>
-                <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-3 rounded-full bg-teal-600" style={{ width: `${((f.overallBand - 1) / 8) * 100}%` }} />
-                </div>
-                <span className={`text-sm font-black w-8 text-right ${bandColor(f.overallBand)}`}>{f.overallBand}</span>
-                <span className="text-xs font-semibold text-teal-700 w-20">{bandLabel(f.overallBand)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "criteria" && (
-        <div className="space-y-3">
-          {criteria.map(([key, c]: [string, { band: number; label: string; feedback: string }]) => (
-            <div key={key} className={`rounded-xl border p-4 ${bandBg(c.band)}`}>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{key}</span>
-                  <p className="font-bold text-slate-800">{c.label}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`text-3xl font-black ${bandColor(c.band)}`}>{c.band}</p>
-                  <p className="text-xs text-slate-500">{bandLabel(c.band)}</p>
-                </div>
-              </div>
-              <p className="text-sm text-slate-700 leading-relaxed">{c.feedback}</p>
-            </div>
+    <div>
+      <div className="text-xs text-center text-gray-400 mb-1 font-medium">{cd.title}</div>
+      <ResponsiveContainer width="100%" height={210}>
+        <PieChart>
+          <Pie data={data} cx="50%" cy="50%" outerRadius={80} dataKey="value"
+            label={({ name, value }) => `${name}: ${value}%`} labelLine={{ stroke: "#6b7280", strokeWidth: 1 }}>
+            {data.map((d, i) => <Cell key={i} fill={d.fill} />)}
+          </Pie>
+          <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8, fontSize: 11 }} formatter={v => [`${v}%`]} />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+function renderTable(cd) {
+  const cols = cd.series[0].data.map(d => d.label);
+  return (
+    <div className="overflow-x-auto">
+      <div className="text-xs text-center text-gray-400 mb-2 font-medium">{cd.title}</div>
+      <table className="w-full text-xs border-collapse">
+        <thead>
+          <tr>
+            <th className="bg-gray-700 text-gray-300 px-3 py-2 text-left border border-gray-600 font-semibold">Category</th>
+            {cols.map(c => <th key={c} className="bg-gray-700 text-gray-300 px-3 py-2 border border-gray-600 font-semibold text-center">{c}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {cd.series.map((s, i) => (
+            <tr key={s.name} className={i % 2 === 0 ? "bg-gray-800" : "bg-gray-900"}>
+              <td className="px-3 py-2 border border-gray-700 font-medium text-gray-300">{s.name}</td>
+              {s.data.map((d, j) => <td key={j} className="px-3 py-2 border border-gray-700 text-center text-gray-300">{d.value}</td>)}
+            </tr>
           ))}
-        </div>
-      )}
-
-      {tab === "improve" && (
-        <div className="space-y-3">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-bold text-teal-600 uppercase tracking-wide mb-3">🎯 Priority Improvements (Examiner Recommendations)</p>
-            <div className="space-y-3">
-              {(f.priorityImprovements || []).map((tip: string, i: number) => (
-                <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-xl">
-                  <span className="w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
-                  <p className="text-sm text-slate-700">{tip}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {tab === "model" && (
-        <div className="space-y-3">
-          <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Examiner&apos;s Model Paragraph (Band 7+ Level)</p>
-            <p className="text-xs text-slate-400 mb-3">The examiner has rewritten one paragraph from your essay to demonstrate Band 7+ writing quality on the same argument.</p>
-            <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl">
-              <p className="text-sm text-slate-700 leading-relaxed italic">{f.modelParagraph}</p>
-            </div>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-            <p className="text-xs font-bold text-amber-700 uppercase mb-2">⚠️ Examiner Note</p>
-            <p className="text-xs text-amber-800">The model paragraph is a guide to demonstrate language quality. In a real exam, your ideas and examples should be your own. Focus on the structural and lexical techniques shown.</p>
-          </div>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+function ChartVisual({ chartType, chartData, compact = false }) {
+  if (!chartData) return null;
+  return (
+    <div className={`bg-gray-900 border border-gray-700 rounded-xl p-3 ${compact ? "" : "mt-3"}`}>
+      {chartType === "Bar Chart" && renderBarChart(chartData)}
+      {chartType === "Line Graph" && renderLineChart(chartData)}
+      {chartType === "Pie Chart" && renderPieChart(chartData)}
+      {chartType === "Table" && renderTable(chartData)}
+      {chartData.keyFeatures?.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-gray-700">
+          <div className="text-xs text-gray-500 mb-1 font-medium">Key features:</div>
+          <div className="flex flex-wrap gap-1">{chartData.keyFeatures.map((f, i) => <span key={i} className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">{f}</span>)}</div>
         </div>
       )}
     </div>
   );
 }
 
-// ─── TIPS SIDEBAR ──────────────────────────────────────────────────────────────
-function TipsSidebar({ taskType }: { taskType: string }) {
-  const tips = WRITING_TIPS.filter((_, i) => taskType === "task1" ? [0, 2, 3, 4, 5, 6].includes(i) : [0, 1, 2, 3, 5, 6, 7].includes(i));
-  const [open, setOpen] = useState<number | null>(null);
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">📚 Examiner Tips</p>
-      {tips.map((t, i) => (
-        <div key={i} className={`rounded-xl border cursor-pointer transition-all ${open === i ? "border-teal-300 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-200"}`}
-          onClick={() => setOpen(open === i ? null : i)}>
-          <div className="px-3 py-2.5 flex items-start gap-2">
-            <span className={`text-xs px-1.5 py-0.5 rounded font-bold flex-shrink-0 ${t.source === "IELTSLiz" ? "bg-rose-100 text-rose-600" : "bg-indigo-100 text-indigo-600"}`}>{t.source}</span>
-            <p className="text-xs font-semibold text-slate-700">{t.title}</p>
-          </div>
-          {open === i && <div className="px-3 pb-3 text-xs text-slate-600 leading-relaxed">{t.tip}</div>}
-        </div>
-      ))}
-    </div>
-  );
+// ── Prompts ────────────────────────────────────────────────────────────────
+function buildGeneratePrompt(chartType, taskType, subtype) {
+  const isVisual = VISUAL_TYPES.includes(chartType);
+  if (taskType === "Task 2") return `Generate a realistic Academic IELTS Task 2 "${subtype}" question.\nRespond ONLY with valid JSON:\n{ "question": "Full exam question", "context": null, "chartType": null, "chartData": null }`;
+  if (!isVisual) return `Generate a realistic Academic IELTS Task 1 "${chartType}" question with a detailed text description.\nRespond ONLY with valid JSON:\n{ "question": "Full question including visual description", "context": "Note this is a ${chartType}", "chartType": "${chartType}", "chartData": null }`;
+  return `Generate a realistic Academic IELTS Task 1 question using a "${chartType}". Include authentic exam-level data (2–4 series, 5–8 data points for line/bar). Data must tell an interesting story.
+Respond ONLY with valid JSON, no markdown:
+{
+  "question": "The [chartType] below shows [description]. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.",
+  "context": "One-line description",
+  "chartType": "${chartType}",
+  "chartData": {
+    "title": "Chart title",
+    "xAxisLabel": "X label",
+    "yAxisLabel": "Y label with unit",
+    "unit": "% or million etc",
+    "series": [ { "name": "Series", "color": "#60a5fa", "data": [ { "label": "Category", "value": 42 } ] } ],
+    "keyFeatures": ["Feature 1", "Feature 2", "Feature 3"]
+  }
+}
+For Pie Chart: one series, values sum to 100. For Table: series = rows, label = column headers.`;
 }
 
-// ─── MAIN APP ──────────────────────────────────────────────────────────────────
-export default function App() {
-  const [taskType, setTaskType] = useState("task2");
-  const [promptId, setPromptId] = useState("t2_1");
-  const [essay, setEssay] = useState("");
-  const [timerRunning, setTimerRunning] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState(null);
-  const [error, setError] = useState("");
-  const [aiGenerating, setAiGenerating] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState("");
-  const [useCustom, setUseCustom] = useState(false);
+function buildFeedbackPrompt(taskType, chartType, question, chartData, answer, targetBand, history) {
+  const nearest = [5, 6, 7, 8].reduce((p, c) => Math.abs(c - targetBand) < Math.abs(p - targetBand) ? c : p, 6);
+  const d = BAND_DESCRIPTORS[nearest];
+  const chartCtx = chartData ? `\nChart data: ${JSON.stringify(chartData)}` : "";
+  const hist = history.map((h, i) => `Attempt ${i + 1}: Band ${h.overall}`).join(", ");
+  return `You are a strict IELTS examiner marking Academic IELTS ${taskType}${chartType ? ` (${chartType})` : ""}.
+Target band: ${targetBand}. Previous: ${hist || "none"}.
+Band ${nearest}: TA:${d.TA} CC:${d.CC} LR:${d.LR} GRA:${d.GRA}
+QUESTION: ${question}${chartCtx}
+STUDENT RESPONSE: ${answer}
+Respond ONLY with valid JSON, no markdown:
+{
+  "scores":{"TA":6.0,"CC":6.0,"LR":6.0,"GRA":6.0},
+  "overall":6.0,
+  "examinerSummary":"2-3 sentence overall comment",
+  "strengths":["Specific strength with quote and criterion"],
+  "improvements":[{"issue":"Label","criterion":"TA|CC|LR|GRA","original":"quote","improved":"rewritten at band ${targetBand}","explanation":"why better"}],
+  "dataAccuracy":${chartData ? '"Comment on whether student correctly referenced key data points"' : 'null'},
+  "vocabHighlights":["word/phrase"],
+  "examTip":"One actionable tip"
+}
+Rules: scores from [4,4.5,5,5.5,6,6.5,7,7.5,8,9]. overall=mean rounded to 0.5. Be honest.`;
+}
 
-  const prompts = taskType === "task2" ? T2_PROMPTS : T1_PROMPTS;
-  const currentPrompt = useCustom ? { id: "custom", type: "Custom", text: customPrompt } : prompts.find(p => p.id === promptId) || prompts[0];
-  const wordCount = countWords(essay);
-  const minWords = taskType === "task1" ? 150 : 250;
-  const recWords = taskType === "task1" ? "150–190" : "250–300";
-  const timerSecs = taskType === "task1" ? 1200 : 2400;
+// ── Question Bank Editor ────────────────────────────────────────────────────
+const emptyForm = () => ({
+  id: "", task: "Task 1", chartType: "Bar Chart", essayType: TASK2_TYPES[0],
+  topic: "Education", difficulty: "Band 6–7", question: "",
+  chartData: { title: "", xAxisLabel: "", yAxisLabel: "", unit: "", series: [{ name: "Series 1", color: "#60a5fa", data: [{ label: "", value: "" }, { label: "", value: "" }] }], keyFeatures: ["", "", ""] }
+});
 
-  const generateAIPrompt = async () => {
-    setAiGenerating(true);
-    const topics = ["climate change", "technology in education", "globalisation", "healthcare", "urban development", "immigration", "social media", "crime and punishment", "gender equality", "ageing population"];
-    const topic = topics[Math.floor(Math.random() * topics.length)];
-    const type = taskType === "task2"
-      ? ["Opinion (To what extent do you agree?)", "Discuss both views and give your opinion", "Problem and solution", "Advantages and disadvantages", "Two direct questions"][Math.floor(Math.random() * 5)]
-      : ["Bar chart", "Line graph", "Pie chart", "Table", "Process diagram"][Math.floor(Math.random() * 5)];
-    try {
-      const res = await fetch("/api/generate-prompt", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ taskType, type, topic })
-      });
-      const data = await res.json();
-      setCustomPrompt(data.text || "");
-      setUseCustom(true);
-    } catch { setCustomPrompt("Error generating prompt. Please try again."); setUseCustom(true); }
-    setAiGenerating(false);
+function QuestionBankManager({ questions, onSave, onDelete, onClose }) {
+  const [editing, setEditing] = useState(null);
+  const [filterTask, setFilterTask] = useState("All");
+  const [filterTopic, setFilterTopic] = useState("All");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const filtered = questions.filter(q =>
+    (filterTask === "All" || q.task === filterTask) &&
+    (filterTopic === "All" || q.topic === filterTopic)
+  );
+
+  const startNew = () => setEditing({ ...emptyForm(), id: uid() });
+  const startEdit = q => {
+    const f = { ...emptyForm(), ...q };
+    if (!f.chartData) f.chartData = emptyForm().chartData;
+    setEditing(f);
   };
 
-  const submitEssay = async () => {
-    if (wordCount < 20) { setError("Please write at least 20 words before submitting."); return; }
-    setLoading(true); setError(""); setFeedback(null);
-    try {
-      const res = await fetch("/api/mark", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          essay,
-          promptText: currentPrompt.text,
-          taskType,
-          wordCount
-        })
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to mark essay");
-      }
-
-      setFeedback(data.feedback); setSubmitted(true);
-    } catch (e: unknown) { setError(`Marking error: ${e instanceof Error ? e.message : String(e)}. Please try again.`); }
-    setLoading(false);
+  const save = () => {
+    if (!editing.question.trim()) return alert("Please enter a question.");
+    onSave(editing);
+    setEditing(null);
   };
 
-  const reset = () => { setEssay(""); setFeedback(null); setSubmitted(false); setTimerRunning(false); setError(""); };
+  const updateField = (path, val) => {
+    setEditing(prev => {
+      const next = JSON.parse(JSON.stringify(prev));
+      const keys = path.split(".");
+      let obj = next;
+      for (let i = 0; i < keys.length - 1; i++) obj = obj[keys[i]];
+      obj[keys[keys.length - 1]] = val;
+      return next;
+    });
+  };
 
-  return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-20 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-black text-sm">J</span>
-          </div>
-          <div>
-            <h1 className="font-black text-slate-800 text-sm">Jaxtina IELTS Writing</h1>
-            <p className="text-xs text-slate-400">Senior AI Examiner • Official Band Descriptors</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {timerRunning && <Timer secs={timerSecs} running={timerRunning} onEnd={() => { setTimerRunning(false); submitEssay(); }} />}
-          {!timerRunning && !submitted && (
-            <button onClick={() => setTimerRunning(true)} className="text-xs border border-teal-300 text-teal-700 px-3 py-1.5 rounded-lg hover:bg-teal-50 transition-colors">
-              ▶ Start Timer ({taskType === "task1" ? "20" : "40"} min)
-            </button>
-          )}
-          {submitted && <button onClick={reset} className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 transition-colors">↺ New Essay</button>}
-        </div>
+  const addSeries = () => setEditing(prev => ({ ...prev, chartData: { ...prev.chartData, series: [...prev.chartData.series, { name: `Series ${prev.chartData.series.length + 1}`, color: COLORS[prev.chartData.series.length % COLORS.length], data: prev.chartData.series[0].data.map(d => ({ label: d.label, value: "" })) }] } }));
+  const removeSeries = i => setEditing(prev => ({ ...prev, chartData: { ...prev.chartData, series: prev.chartData.series.filter((_, j) => j !== i) } }));
+  const addDataPoint = () => setEditing(prev => ({ ...prev, chartData: { ...prev.chartData, series: prev.chartData.series.map(s => ({ ...s, data: [...s.data, { label: "", value: "" }] })) } }));
+  const removeDataPoint = i => setEditing(prev => ({ ...prev, chartData: { ...prev.chartData, series: prev.chartData.series.map(s => ({ ...s, data: s.data.filter((_, j) => j !== i) })) } }));
+
+  if (editing) return (
+    <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto w-full">
+      <div className="flex items-center gap-2 mb-4">
+        <button onClick={() => setEditing(null)} className="text-gray-400 hover:text-white text-sm">← Back</button>
+        <h3 className="text-sm font-semibold">{editing.id && questions.find(q => q.id === editing.id) ? "Edit Question" : "New Question"}</h3>
       </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-5">
-        {/* Task Type Selector */}
-        {!submitted && (
-          <div className="flex gap-2 mb-5">
-            {[["task2", "Task 2 – Essay", "40 min · 250+ words"], ["task1", "Task 1 – Report", "20 min · 150+ words"]].map(([k, l, sub]) => (
-              <button key={k} onClick={() => { setTaskType(k); setPromptId(k === "task2" ? "t2_1" : "t1_1"); setUseCustom(false); reset(); }}
-                className={`flex-1 py-3 rounded-xl border text-left px-4 transition-all ${taskType === k ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-300"}`}>
-                <p className={`font-bold text-sm ${taskType === k ? "text-teal-700" : "text-slate-700"}`}>{l}</p>
-                <p className="text-xs text-slate-400">{sub}</p>
-              </button>
+      <div className="space-y-4">
+        {/* Task type */}
+        <div>
+          <label className="text-xs text-gray-400 mb-1.5 block">Task Type</label>
+          <div className="flex gap-2">
+            {["Task 1", "Task 2"].map(t => (
+              <button key={t} onClick={() => updateField("task", t)} className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${editing.task === t ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400"}`}>{t}</button>
             ))}
           </div>
-        )}
-
-        <div className="grid grid-cols-12 gap-5">
-          {/* LEFT COLUMN – Prompt + Editor */}
-          <div className="col-span-8 space-y-4">
-            {/* Prompt selection */}
-            {!submitted && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Select Prompt</p>
-                  <button onClick={generateAIPrompt} disabled={aiGenerating}
-                    className="text-xs bg-indigo-50 border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100 disabled:opacity-50 transition-colors flex items-center gap-1">
-                    {aiGenerating ? "⟳ Generating…" : "✨ AI Generate Prompt"}
-                  </button>
-                </div>
-                <div className="flex gap-2 flex-wrap mb-3">
-                  {prompts.map(p => (
-                    <button key={p.id} onClick={() => { setPromptId(p.id); setUseCustom(false); }}
-                      className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${!useCustom && promptId === p.id ? "bg-teal-600 text-white border-teal-600" : "border-slate-200 text-slate-600 hover:border-teal-300"}`}>
-                      {p.type}
-                    </button>
-                  ))}
-                  {useCustom && <button className="text-xs px-3 py-1.5 rounded-lg border bg-indigo-600 text-white border-indigo-600">AI Custom</button>}
-                </div>
-                {useCustom && (
-                  <textarea value={customPrompt} onChange={e => setCustomPrompt(e.target.value)} rows={3}
-                    className="w-full border border-indigo-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50 resize-none mb-2" />
-                )}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded mr-2 ${taskType === "task2" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"}`}>{currentPrompt.type}</span>
-                  <p className="text-sm text-slate-700 mt-2 leading-relaxed whitespace-pre-line">{currentPrompt.text}</p>
-                  <p className="text-xs text-slate-400 mt-2">Write at least {minWords} words. Recommended: {recWords} words.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Essay Editor or Feedback */}
-            {!submitted ? (
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50">
-                  <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Your Answer</p>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs font-mono font-bold px-2 py-1 rounded-lg ${wordCount >= minWords ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"}`}>
-                      {wordCount} / {minWords}+ words
-                    </span>
-                  </div>
-                </div>
-                <textarea value={essay} onChange={e => setEssay(e.target.value)}
-                  className="w-full p-4 text-sm text-slate-700 leading-relaxed focus:outline-none resize-none"
-                  style={{ minHeight: 380 }}
-                  placeholder={`Write your ${taskType === "task1" ? "Task 1 report" : "Task 2 essay"} here...\n\n• Minimum ${minWords} words\n• Aim for ${recWords} words\n• Do NOT copy the question\n• ${taskType === "task2" ? "Structure: Introduction → Body 1 → Body 2 (→ Body 3) → Conclusion" : "Structure: Introduction + Overview → Body 1 → Body 2"}`} />
-                {/* Word progress bar */}
-                <div className="px-4 pb-3">
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-1.5 rounded-full transition-all ${wordCount >= minWords ? "bg-teal-500" : "bg-amber-400"}`}
-                      style={{ width: `${Math.min((wordCount / (minWords * 1.2)) * 100, 100)}%` }} />
-                  </div>
-                </div>
-                <div className="px-4 pb-4 flex items-center justify-between">
-                  {error && <p className="text-xs text-red-500">{error}</p>}
-                  <div className="ml-auto flex gap-2">
-                    {wordCount > 0 && <button onClick={() => setEssay("")} className="text-xs text-slate-400 hover:text-slate-600 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors">Clear</button>}
-                    <button onClick={submitEssay} disabled={loading || wordCount < 20}
-                      className="bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors flex items-center gap-2">
-                      {loading ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Marking…</> : "Submit for Marking"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* The submitted essay */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Your Submitted Essay — {wordCount} words</p>
-                    <button onClick={reset} className="text-xs bg-teal-600 text-white px-3 py-1.5 rounded-lg hover:bg-teal-700 transition-colors">Write New Essay</button>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-4 text-sm text-slate-700 leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
-                    {essay}
-                  </div>
-                </div>
-                {feedback && <FeedbackPanel feedback={feedback as Record<string, unknown>} />}
-              </div>
-            )}
+        </div>
+        {/* Chart/Essay type */}
+        {editing.task === "Task 1" ? (
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">Chart Type</label>
+            <div className="flex flex-wrap gap-1.5">
+              {CHART_TYPES.map(t => <button key={t} onClick={() => updateField("chartType", t)} className={`px-3 py-1 rounded-full text-xs border transition-all ${editing.chartType === t ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400"}`}>{t}</button>)}
+            </div>
           </div>
-
-          {/* RIGHT COLUMN – Tips */}
-          <div className="col-span-4 space-y-4">
-            <TipsSidebar taskType={taskType} />
-
-            {/* Band score reference */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-4">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Band Score Reference</p>
-              <div className="space-y-1.5">
-                {[["9", "Expert user", "Fully operational command"], ["8", "Very good user", "Fully operational, rare errors"], ["7", "Good user", "Operational, some inaccuracies"], ["6", "Competent user", "Effective, some inaccuracies"], ["5", "Modest user", "Partial command"], ["4", "Limited user", "Basic competence"],].map(([b, l, d]) => (
-                  <div key={b} className="flex items-center gap-2">
-                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${bandBg(parseFloat(b))} ${bandColor(parseFloat(b))} border`}>{b}</span>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-700">{l}</p>
-                      <p className="text-xs text-slate-400">{d}</p>
-                    </div>
+        ) : (
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">Essay Type</label>
+            <div className="flex flex-wrap gap-1.5">
+              {TASK2_TYPES.map(t => <button key={t} onClick={() => updateField("essayType", t)} className={`px-3 py-1 rounded-full text-xs border transition-all ${editing.essayType === t ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400"}`}>{t}</button>)}
+            </div>
+          </div>
+        )}
+        {/* Topic & Difficulty */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">Topic</label>
+            <select value={editing.topic} onChange={e => updateField("topic", e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+              {TOPICS.map(t => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">Difficulty</label>
+            <select value={editing.difficulty} onChange={e => updateField("difficulty", e.target.value)} className="w-full bg-gray-800 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white">
+              {DIFFICULTIES.map(d => <option key={d}>{d}</option>)}
+            </select>
+          </div>
+        </div>
+        {/* Question text */}
+        <div>
+          <label className="text-xs text-gray-400 mb-1.5 block">Question Text</label>
+          <textarea value={editing.question} onChange={e => updateField("question", e.target.value)} rows={4} placeholder="Enter the full IELTS question as it would appear in the exam…" className="w-full bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-blue-500" />
+        </div>
+        {/* Chart data builder */}
+        {editing.task === "Task 1" && VISUAL_TYPES.includes(editing.chartType) && (
+          <div className="bg-gray-800 border border-gray-700 rounded-xl p-4 space-y-3">
+            <div className="text-xs font-semibold text-blue-400">📊 Chart Data</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div><label className="text-xs text-gray-500 mb-1 block">Chart Title</label><input value={editing.chartData.title} onChange={e => updateField("chartData.title", e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="e.g. Student Enrolment 2020" /></div>
+              <div><label className="text-xs text-gray-500 mb-1 block">Unit</label><input value={editing.chartData.unit} onChange={e => updateField("chartData.unit", e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="%, million, km…" /></div>
+              {editing.chartType !== "Pie Chart" && (<>
+                <div><label className="text-xs text-gray-500 mb-1 block">X-Axis Label</label><input value={editing.chartData.xAxisLabel} onChange={e => updateField("chartData.xAxisLabel", e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="e.g. Country" /></div>
+                <div><label className="text-xs text-gray-500 mb-1 block">Y-Axis Label</label><input value={editing.chartData.yAxisLabel} onChange={e => updateField("chartData.yAxisLabel", e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500" placeholder="e.g. Percentage (%)" /></div>
+              </>)}
+            </div>
+            {/* Data points header */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs text-gray-500 font-medium">Data Points</label>
+                <button onClick={addDataPoint} className="text-xs text-blue-400 hover:text-blue-300">+ Add column</button>
+              </div>
+              {/* Column labels */}
+              <div className="flex gap-1 mb-1 ml-20">
+                {editing.chartData.series[0].data.map((d, i) => (
+                  <div key={i} className="flex-1 flex gap-0.5 items-center">
+                    <input value={d.label} onChange={e => editing.chartData.series.forEach((_, si) => updateField(`chartData.series.${si}.data.${i}.label`, e.target.value))} className="flex-1 bg-gray-900 border border-gray-700 rounded px-1 py-1 text-xs text-white focus:outline-none focus:border-blue-500 min-w-0" placeholder={`Col ${i + 1}`} />
+                    {editing.chartData.series[0].data.length > 2 && <button onClick={() => removeDataPoint(i)} className="text-gray-600 hover:text-red-400 text-xs px-0.5">×</button>}
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Scoring formula */}
-            <div className="bg-teal-50 border border-teal-100 rounded-2xl p-4">
-              <p className="text-xs font-bold text-teal-700 uppercase tracking-wide mb-2">📊 Scoring Formula</p>
-              <div className="space-y-1 text-xs text-slate-600">
-                <p>4 criteria × 25% each:</p>
-                <p>• <span className="font-semibold">TR</span> – Task Response/Achievement</p>
-                <p>• <span className="font-semibold">CC</span> – Coherence & Cohesion</p>
-                <p>• <span className="font-semibold">LR</span> – Lexical Resource</p>
-                <p>• <span className="font-semibold">GRA</span> – Grammar Range & Accuracy</p>
-                <div className="mt-2 pt-2 border-t border-teal-200">
-                  <p className="font-semibold text-teal-800">Overall = avg of 4 criteria</p>
-                  <p className="text-xs text-teal-600 mt-0.5">Task 2 = 2× weight of Task 1 in final Writing band</p>
+              {/* Series rows */}
+              {editing.chartData.series.map((s, si) => (
+                <div key={si} className="flex gap-1 mb-1 items-center">
+                  <div className="w-20 shrink-0">
+                    <input value={s.name} onChange={e => updateField(`chartData.series.${si}.name`, e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded px-1 py-1 text-xs text-white focus:outline-none focus:border-blue-500" placeholder={`Series ${si + 1}`} />
+                  </div>
+                  {s.data.map((d, i) => (
+                    <input key={i} value={d.value} onChange={e => updateField(`chartData.series.${si}.data.${i}.value`, Number(e.target.value))} type="number" className="flex-1 bg-gray-900 border border-gray-700 rounded px-1 py-1 text-xs text-white focus:outline-none focus:border-blue-500 min-w-0" />
+                  ))}
+                  {editing.chartData.series.length > 1 && <button onClick={() => removeSeries(si)} className="text-gray-600 hover:text-red-400 text-xs px-1">×</button>}
                 </div>
+              ))}
+              {editing.chartType !== "Pie Chart" && <button onClick={addSeries} className="text-xs text-blue-400 hover:text-blue-300 mt-1">+ Add series</button>}
+            </div>
+            {/* Key features */}
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block">Key Features (shown as hints)</label>
+              {editing.chartData.keyFeatures.map((f, i) => (
+                <input key={i} value={f} onChange={e => updateField(`chartData.keyFeatures.${i}`, e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white mb-1 focus:outline-none focus:border-blue-500" placeholder={`Key feature ${i + 1}…`} />
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex gap-2 pt-2">
+          <button onClick={save} className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold">Save Question</button>
+          <button onClick={() => setEditing(null)} className="px-4 py-2.5 bg-gray-800 border border-gray-700 text-gray-400 rounded-xl text-sm">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="p-4 border-b border-gray-800 flex items-center gap-3 shrink-0">
+        <button onClick={onClose} className="text-gray-400 hover:text-white text-sm">← Back</button>
+        <h3 className="text-sm font-semibold flex-1">Question Bank Manager</h3>
+        <button onClick={startNew} className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg font-medium">+ New Question</button>
+      </div>
+      <div className="px-4 py-2 border-b border-gray-800 flex gap-2 shrink-0">
+        <select value={filterTask} onChange={e => setFilterTask(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white">
+          <option>All</option><option>Task 1</option><option>Task 2</option>
+        </select>
+        <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white">
+          <option>All</option>{TOPICS.map(t => <option key={t}>{t}</option>)}
+        </select>
+        <span className="ml-auto text-xs text-gray-500 self-center">{filtered.length} questions</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {filtered.length === 0 && <div className="text-center py-8 text-gray-500 text-sm">No questions yet. Click "+ New Question" to add one.</div>}
+        {filtered.map(q => (
+          <div key={q.id} className="bg-gray-800 border border-gray-700 rounded-xl p-3">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                  <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">{q.task}</span>
+                  <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{q.chartType || q.essayType}</span>
+                  <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{q.topic}</span>
+                  <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{q.difficulty}</span>
+                  {q.id.startsWith("seed-") && <span className="text-xs text-gray-500 italic">sample</span>}
+                </div>
+                <p className="text-xs text-gray-300 leading-relaxed line-clamp-2">{q.question}</p>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button onClick={() => startEdit(q)} className="text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded-lg">Edit</button>
+                {confirmDelete === q.id ? (
+                  <div className="flex gap-1">
+                    <button onClick={() => { onDelete(q.id); setConfirmDelete(null); }} className="text-xs bg-red-700 hover:bg-red-600 text-white px-2 py-1 rounded-lg">Yes</button>
+                    <button onClick={() => setConfirmDelete(null)} className="text-xs bg-gray-700 text-gray-300 px-2 py-1 rounded-lg">No</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setConfirmDelete(q.id)} className="text-xs bg-gray-700 hover:bg-red-800 text-gray-400 hover:text-red-300 px-2 py-1 rounded-lg">Del</button>
+                )}
               </div>
             </div>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Question Picker ────────────────────────────────────────────────────────
+function QuestionPicker({ questions, onSelect, onClose }) {
+  const [filterTask, setFilterTask] = useState("All");
+  const [filterType, setFilterType] = useState("All");
+  const [filterTopic, setFilterTopic] = useState("All");
+  const [filterDiff, setFilterDiff] = useState("All");
+  const [preview, setPreview] = useState(null);
+
+  const types = filterTask === "Task 1" ? CHART_TYPES : filterTask === "Task 2" ? TASK2_TYPES : [...CHART_TYPES, ...TASK2_TYPES];
+  const filtered = questions.filter(q =>
+    (filterTask === "All" || q.task === filterTask) &&
+    (filterType === "All" || (q.chartType === filterType || q.essayType === filterType)) &&
+    (filterTopic === "All" || q.topic === filterTopic) &&
+    (filterDiff === "All" || q.difficulty === filterDiff)
+  );
+
+  if (preview) return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="p-4 border-b border-gray-800 flex items-center gap-2 shrink-0">
+        <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-white text-sm">← Back</button>
+        <h3 className="text-sm font-semibold">Preview Question</h3>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">{preview.task}</span>
+          <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{preview.chartType || preview.essayType}</span>
+          <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{preview.topic}</span>
+          <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{preview.difficulty}</span>
+        </div>
+        <p className="text-sm text-gray-200 leading-relaxed mb-3">{preview.question}</p>
+        {preview.chartData && <ChartVisual chartType={preview.chartType} chartData={preview.chartData} />}
+        {!VISUAL_TYPES.includes(preview.chartType) && preview.task === "Task 1" && (
+          <div className="mt-3 text-xs text-amber-400 bg-amber-950 border border-amber-800 rounded-lg px-3 py-2">⚠️ In the real exam, a {preview.chartType?.toLowerCase()} image would appear here.</div>
+        )}
+      </div>
+      <div className="p-4 border-t border-gray-800 shrink-0">
+        <button onClick={() => onSelect(preview)} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold">Use This Question → Start Writing</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="p-4 border-b border-gray-800 flex items-center gap-2 shrink-0">
+        <button onClick={onClose} className="text-gray-400 hover:text-white text-sm">← Back</button>
+        <h3 className="text-sm font-semibold">Question Bank</h3>
+        <span className="ml-auto text-xs text-gray-500">{filtered.length} questions</span>
+      </div>
+      {/* Filters */}
+      <div className="px-4 py-2 border-b border-gray-800 flex flex-wrap gap-2 shrink-0">
+        <select value={filterTask} onChange={e => { setFilterTask(e.target.value); setFilterType("All"); }} className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white">
+          <option>All</option><option>Task 1</option><option>Task 2</option>
+        </select>
+        <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white">
+          <option>All</option>{types.map(t => <option key={t}>{t}</option>)}
+        </select>
+        <select value={filterTopic} onChange={e => setFilterTopic(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white">
+          <option>All</option>{TOPICS.map(t => <option key={t}>{t}</option>)}
+        </select>
+        <select value={filterDiff} onChange={e => setFilterDiff(e.target.value)} className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white">
+          <option>All</option>{DIFFICULTIES.map(d => <option key={d}>{d}</option>)}
+        </select>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        {filtered.length === 0 && <div className="text-center py-8 text-gray-500 text-sm">No questions match your filters.</div>}
+        {filtered.map(q => (
+          <button key={q.id} onClick={() => setPreview(q)} className="w-full text-left bg-gray-800 hover:bg-gray-750 border border-gray-700 hover:border-blue-600 rounded-xl p-3 transition-all">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                  <span className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">{q.task}</span>
+                  <span className="text-xs bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full">{q.chartType || q.essayType}</span>
+                  <span className="text-xs text-gray-500">{q.topic}</span>
+                  <span className="text-xs text-gray-600">{q.difficulty}</span>
+                </div>
+                <p className="text-xs text-gray-300 leading-relaxed line-clamp-2">{q.question}</p>
+              </div>
+              <span className="text-blue-400 text-sm shrink-0">→</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Feedback sub-components ────────────────────────────────────────────────
+function ScoreCard({ label, score }) {
+  const col = bandColor(score);
+  return (
+    <div className="bg-gray-800 rounded-xl p-3 border border-gray-700">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-gray-400 font-medium leading-tight">{label}</span>
+        <span className="text-xl font-bold ml-2 shrink-0" style={{ color: col }}>{score}</span>
+      </div>
+      <div className="w-full bg-gray-700 rounded-full h-2">
+        <div className="h-2 rounded-full transition-all duration-700" style={{ width: `${((score - 1) / 8) * 100}%`, backgroundColor: col }} />
+      </div>
+    </div>
+  );
+}
+function RadarPanel({ scores }) {
+  const data = criteriaKeys.map(c => ({ subject: c.key, score: scores[c.key] || 0, fullMark: 9 }));
+  return (
+    <ResponsiveContainer width="100%" height={210}>
+      <RadarChart data={data} margin={{ top: 10, right: 25, bottom: 10, left: 25 }}>
+        <PolarGrid stroke="#374151" />
+        <PolarAngleAxis dataKey="subject" tick={{ fill: "#9ca3af", fontSize: 12, fontWeight: 600 }} />
+        <Radar dataKey="score" stroke="#60a5fa" fill="#60a5fa" fillOpacity={0.25} strokeWidth={2} />
+      </RadarChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Main App ───────────────────────────────────────────────────────────────
+export default function App() {
+  const [step, setStep] = useState("setup");
+  const [taskType, setTaskType] = useState("Task 1");
+  const [chartType, setChartType] = useState("Bar Chart");
+  const [subtype, setSubtype] = useState(TASK2_TYPES[0]);
+  const [targetBand, setTargetBand] = useState(7);
+  const [question, setQuestion] = useState("");
+  const [chartData, setChartData] = useState(null);
+  const [sourceMode, setSourceMode] = useState(null); // "generate"|"bank"|"custom"
+  const [answer, setAnswer] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [feedbackTab, setFeedbackTab] = useState("narrative");
+  const [showManager, setShowManager] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
+  const [bankQuestions, setBankQuestions] = useState([]);
+  const [bankLoaded, setBankLoaded] = useState(false);
+
+  const wordCount = answer.trim() ? answer.trim().split(/\s+/).length : 0;
+  const minWords = taskType === "Task 1" ? 150 : 250;
+
+  useEffect(() => {
+    loadBank().then(data => {
+      setBankQuestions(data || SEED_QUESTIONS);
+      setBankLoaded(true);
+    });
+  }, []);
+
+  useEffect(() => { if (bankLoaded) saveBank(bankQuestions); }, [bankQuestions, bankLoaded]);
+
+  useEffect(() => { setQuestion(""); setChartData(null); setSourceMode(null); }, [taskType, chartType, subtype]);
+
+  const callAPI = async (prompt, maxTokens = 1400) => {
+    const res = await fetch("/api/anthropic", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ maxTokens, prompt })
+    });
+    const data = await res.json();
+    const raw = data.content?.map(b => b.text || "").join("").replace(/```json|```/g, "").trim();
+    return JSON.parse(raw);
+  };
+
+  const generateQuestion = async () => {
+    setLoading(true); setLoadingMsg("Generating question…"); setChartData(null); setQuestion("");
+    try {
+      const type = taskType === "Task 1" ? chartType : subtype;
+      const parsed = await callAPI(buildGeneratePrompt(chartType, taskType, type), 1600);
+      setQuestion(parsed.question);
+      if (parsed.chartData) setChartData(parsed.chartData);
+    } catch { setQuestion("Failed to generate. Please try another option."); }
+    setLoading(false); setLoadingMsg("");
+  };
+
+  const submitForMarking = async () => {
+    if (!answer.trim() || !question.trim()) return;
+    setLoading(true); setLoadingMsg("Marking your response…"); setFeedback(null);
+    try {
+      const type = taskType === "Task 1" ? chartType : subtype;
+      const parsed = await callAPI(buildFeedbackPrompt(taskType, type, question, chartData, answer, targetBand, history), 1900);
+      setFeedback(parsed);
+      setHistory(prev => [...prev, { ...parsed.scores, overall: parsed.overall }]);
+      setStep("feedback"); setFeedbackTab("narrative");
+    } catch { alert("Marking failed. Please try again."); }
+    setLoading(false); setLoadingMsg("");
+  };
+
+  const selectFromBank = (q) => {
+    setTaskType(q.task);
+    if (q.task === "Task 1") setChartType(q.chartType || "Bar Chart");
+    else setSubtype(q.essayType || TASK2_TYPES[0]);
+    setQuestion(q.question);
+    setChartData(q.chartData || null);
+    setSourceMode("bank");
+    setShowPicker(false);
+    setStep("write");
+  };
+
+  const saveQuestion = (q) => {
+    setBankQuestions(prev => {
+      const idx = prev.findIndex(x => x.id === q.id);
+      return idx >= 0 ? prev.map(x => x.id === q.id ? q : x) : [...prev, q];
+    });
+  };
+  const deleteQuestion = id => setBankQuestions(prev => prev.filter(x => x.id !== id));
+
+  const reset = () => { setStep("setup"); setAnswer(""); setQuestion(""); setChartData(null); setFeedback(null); setSourceMode(null); };
+  const tryAgain = () => { setAnswer(""); setFeedback(null); setStep("write"); };
+
+  if (showManager) return (
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col" style={{ fontFamily: "Inter,sans-serif" }}>
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-2 shrink-0">
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">IE</div>
+        <span className="text-sm font-semibold">Question Bank Manager</span>
+      </div>
+      <QuestionBankManager questions={bankQuestions} onSave={saveQuestion} onDelete={deleteQuestion} onClose={() => setShowManager(false)} />
+    </div>
+  );
+
+  if (showPicker) return (
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col" style={{ fontFamily: "Inter,sans-serif" }}>
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-2 shrink-0">
+        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">IE</div>
+        <span className="text-sm font-semibold">Choose a Question</span>
+      </div>
+      <QuestionPicker questions={bankQuestions} onSelect={selectFromBank} onClose={() => setShowPicker(false)} />
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-950 text-gray-100 flex flex-col" style={{ fontFamily: "Inter,sans-serif" }}>
+      {/* Top bar */}
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">IE</div>
+          <div>
+            <div className="text-sm font-semibold">IELTS Writing Tutor</div>
+            <div className="text-xs text-gray-500">Task 1 & 2 · Visual · AI Examiner</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowManager(true)} className="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1 rounded-lg hidden sm:block">⚙️ Manage Bank</button>
+          <select value={targetBand} onChange={e => setTargetBand(Number(e.target.value))} className="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white">
+            {[5, 5.5, 6, 6.5, 7, 7.5, 8].map(b => <option key={b} value={b}>Band {b}</option>)}
+          </select>
+          {step !== "setup" && <button onClick={reset} className="text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 px-3 py-1 rounded-lg">New Task</button>}
         </div>
       </div>
+
+      {/* Step bar */}
+      <div className="bg-gray-900 border-b border-gray-800 px-4 py-2 flex gap-1 shrink-0">
+        {[["setup", "1", "Choose"], ["write", "2", "Write"], ["feedback", "3", "Feedback"]].map(([s, n, label]) => (
+          <div key={s} className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${step === s ? "bg-blue-600 text-white" : "text-gray-500"}`}>
+            <span className={`w-4 h-4 rounded-full flex items-center justify-center text-xs ${step === s ? "bg-blue-400" : "bg-gray-700"}`}>{n}</span>
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* ── STEP 1 ── */}
+      {step === "setup" && (
+        <div className="flex-1 overflow-y-auto p-4 max-w-2xl mx-auto w-full">
+          <h2 className="text-base font-semibold mb-4">Set up your practice session</h2>
+          <div className="mb-4">
+            <label className="text-xs text-gray-400 mb-2 block">Task Type</label>
+            <div className="flex gap-2">
+              {["Task 1", "Task 2"].map(t => (
+                <button key={t} onClick={() => setTaskType(t)} className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-all ${taskType === t ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"}`}>
+                  {t}<div className="text-xs font-normal opacity-70 mt-0.5">{t === "Task 1" ? "Describe a visual · 150+ words" : "Write an essay · 250+ words"}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          {taskType === "Task 1" ? (
+            <div className="mb-4">
+              <label className="text-xs text-gray-400 mb-2 block">Chart / Diagram Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                {CHART_TYPES.map(t => {
+                  const icons = { "Bar Chart": "▊", "Line Graph": "📈", "Pie Chart": "◑", "Table": "⊞", "Process Diagram": "⟳", "Map Comparison": "🗺" };
+                  return <button key={t} onClick={() => setChartType(t)} className={`py-3 px-2 rounded-xl text-xs border transition-all flex flex-col items-center gap-1 ${chartType === t ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"}`}>
+                    <span className="text-lg">{icons[t]}</span><span>{t}</span>
+                    {!VISUAL_TYPES.includes(t) && <span className="text-xs opacity-60">text only</span>}
+                  </button>;
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-4">
+              <label className="text-xs text-gray-400 mb-2 block">Essay Type</label>
+              <div className="flex flex-wrap gap-2">
+                {TASK2_TYPES.map(t => <button key={t} onClick={() => setSubtype(t)} className={`px-3 py-1.5 rounded-full text-xs border transition-all ${subtype === t ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"}`}>{t}</button>)}
+              </div>
+            </div>
+          )}
+
+          {/* 3 source options */}
+          <div className="mb-4">
+            <label className="text-xs text-gray-400 mb-2 block">Choose a Question</label>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {[["✨", "Generate", "AI-generated question", "generate"], ["📚", "Question Bank", "Choose from saved questions", "bank"], ["📋", "Paste Own", "Enter your own question", "custom"]].map(([icon, title, desc, mode]) => (
+                <button key={mode} onClick={() => { setSourceMode(mode); if (mode === "generate") generateQuestion(); if (mode === "bank") setShowPicker(true); if (mode === "custom") { setQuestion(""); setChartData(null); } }}
+                  className={`py-3 px-2 rounded-xl text-xs border transition-all flex flex-col items-center gap-1 text-center ${sourceMode === mode ? "bg-blue-600 border-blue-500 text-white" : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"}`}>
+                  <span className="text-xl">{icon}</span>
+                  <span className="font-medium">{title}</span>
+                  <span className="opacity-70 leading-tight">{desc}</span>
+                </button>
+              ))}
+            </div>
+            {sourceMode === "custom" && (
+              <textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Paste your IELTS question here…" rows={4}
+                className="w-full bg-gray-800 border border-blue-600 rounded-xl px-3 py-2 text-sm text-gray-200 placeholder-gray-500 resize-none focus:outline-none" />
+            )}
+            {question && sourceMode === "generate" && <div className="bg-gray-800 border border-gray-700 rounded-xl p-3 text-sm text-gray-200 leading-relaxed">{question}</div>}
+            {chartData && <ChartVisual chartType={chartType} chartData={chartData} />}
+          </div>
+          {question && (
+            <button onClick={() => setStep("write")} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition-all">Start Writing →</button>
+          )}
+        </div>
+      )}
+
+      {/* ── STEP 2 ── */}
+      {step === "write" && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="overflow-y-auto flex-1 p-3 space-y-3">
+            <div className="bg-gray-800 border border-gray-700 rounded-xl p-3">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-medium">{taskType}</span>
+                <span className="text-xs text-gray-500">{taskType === "Task 1" ? chartType : subtype}</span>
+                <span className="ml-auto text-xs text-gray-500">Min {minWords} words · Band {targetBand}</span>
+              </div>
+              <p className="text-sm text-gray-200 leading-relaxed">{question}</p>
+              {chartData && <ChartVisual chartType={chartType} chartData={chartData} />}
+              {!VISUAL_TYPES.includes(chartType) && taskType === "Task 1" && <div className="mt-2 text-xs text-amber-400 bg-amber-950 border border-amber-800 rounded-lg px-3 py-1.5">⚠️ In the real exam, a {chartType.toLowerCase()} image would appear here.</div>}
+            </div>
+            <textarea value={answer} onChange={e => setAnswer(e.target.value)} placeholder={`Write your ${taskType} response here…`} rows={10}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-500 resize-none focus:outline-none focus:border-blue-500 leading-relaxed" />
+          </div>
+          <div className="shrink-0 bg-gray-900 border-t border-gray-800 px-4 py-3 flex items-center justify-between">
+            <div className={`text-xs font-medium ${wordCount >= minWords ? "text-emerald-400" : wordCount >= minWords * 0.8 ? "text-yellow-400" : "text-gray-500"}`}>
+              {wordCount} / {minWords} words {wordCount >= minWords ? "✓" : ""}
+            </div>
+            <button onClick={submitForMarking} disabled={loading || !answer.trim() || wordCount < 50}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-xl text-sm font-semibold transition-all">
+              {loading ? loadingMsg : "Submit for Marking →"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 3 ── */}
+      {step === "feedback" && feedback && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="bg-gray-900 border-b border-gray-800 px-4 py-3 flex items-center gap-3 shrink-0">
+            <div className="text-center shrink-0">
+              <div className="text-3xl font-bold" style={{ color: bandColor(feedback.overall) }}>{feedback.overall}</div>
+              <div className="text-xs text-gray-500">Overall</div>
+            </div>
+            <div className="flex-1 text-xs text-gray-300 leading-relaxed italic hidden sm:block">"{feedback.examinerSummary}"</div>
+            <button onClick={tryAgain} className="text-xs bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-lg shrink-0">Try Again</button>
+          </div>
+          <div className="text-xs text-gray-300 leading-relaxed italic px-4 py-2 sm:hidden border-b border-gray-800">"{feedback.examinerSummary}"</div>
+          <div className="flex border-b border-gray-800 bg-gray-900 shrink-0">
+            {[["narrative", "📝 Feedback"], ["scoreboard", "📊 Scores"], ["history", "📈 Progress"]].map(([t, label]) => (
+              <button key={t} onClick={() => setFeedbackTab(t)} className={`px-4 py-2 text-xs font-medium transition-all ${feedbackTab === t ? "border-b-2 border-blue-500 text-blue-400" : "text-gray-500 hover:text-gray-300"}`}>{label}</button>
+            ))}
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {feedbackTab === "narrative" && (
+              <div className="space-y-4 max-w-2xl mx-auto">
+                {feedback.dataAccuracy && <div className="bg-blue-950 border border-blue-800 rounded-xl p-3"><div className="text-xs font-semibold text-blue-400 mb-1">📊 Data Accuracy</div><p className="text-xs text-gray-300 leading-relaxed">{feedback.dataAccuracy}</p></div>}
+                <div className="bg-emerald-950 border border-emerald-800 rounded-xl p-4">
+                  <div className="text-sm font-semibold text-emerald-400 mb-3">✅ What You Did Well</div>
+                  <ul className="space-y-2">{feedback.strengths.map((s, i) => <li key={i} className="flex gap-2 text-xs text-gray-300 leading-relaxed"><span className="text-emerald-500 mt-0.5 shrink-0">•</span><span>{s}</span></li>)}</ul>
+                </div>
+                <div className="bg-amber-950 border border-amber-800 rounded-xl p-4">
+                  <div className="text-sm font-semibold text-amber-400 mb-3">🔧 What Could Be Better</div>
+                  <div className="space-y-4">{feedback.improvements.map((imp, i) => (
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap"><span className="text-xs font-semibold text-amber-300">{imp.issue}</span><span className="text-xs bg-amber-900 text-amber-300 px-1.5 py-0.5 rounded">{imp.criterion}</span></div>
+                      <div className="bg-gray-900 rounded-lg p-2 border-l-2 border-red-500"><div className="text-xs text-gray-500 mb-0.5">Original</div><div className="text-xs text-gray-300 italic">"{imp.original}"</div></div>
+                      <div className="bg-gray-900 rounded-lg p-2 border-l-2 border-emerald-500"><div className="text-xs text-gray-500 mb-0.5">Improved (Band {targetBand})</div><div className="text-xs text-emerald-300 italic">"{imp.improved}"</div></div>
+                      <div className="text-xs text-gray-400 pl-2">{imp.explanation}</div>
+                    </div>
+                  ))}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl p-3"><div className="text-xs font-semibold text-blue-400 mb-2">📚 Vocab Highlights</div><div className="flex flex-wrap gap-1.5">{feedback.vocabHighlights.map((v, i) => <span key={i} className="text-xs bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full">{v}</span>)}</div></div>
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl p-3"><div className="text-xs font-semibold text-purple-400 mb-2">💡 Exam Tip</div><div className="text-xs text-gray-300 leading-relaxed">{feedback.examTip}</div></div>
+                </div>
+              </div>
+            )}
+            {feedbackTab === "scoreboard" && (
+              <div className="max-w-2xl mx-auto space-y-4">
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4"><div className="text-xs font-semibold text-gray-400 mb-1 text-center">Criteria Radar</div><RadarPanel scores={feedback.scores} /></div>
+                <div className="grid grid-cols-2 gap-3">{criteriaKeys.map(c => <ScoreCard key={c.key} label={c.label} score={feedback.scores[c.key]} />)}</div>
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-gray-400 mb-3">Gap to Target Band {targetBand}</div>
+                  {criteriaKeys.map(c => {
+                    const gap = targetBand - feedback.scores[c.key]; const col = gap <= 0 ? "#34d399" : gap <= 1 ? "#fbbf24" : "#f87171"; return (
+                      <div key={c.key} className="flex items-center gap-3 mb-2">
+                        <div className="text-xs text-gray-400 w-8">{c.key}</div>
+                        <div className="flex-1 bg-gray-700 rounded-full h-2"><div className="h-2 rounded-full transition-all duration-700" style={{ width: `${Math.min(100, (feedback.scores[c.key] / 9) * 100)}%`, backgroundColor: col }} /></div>
+                        <div className="text-xs font-medium w-12 text-right" style={{ color: col }}>{gap <= 0 ? "✓ met" : `+${gap.toFixed(1)}`}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {feedbackTab === "history" && (
+              <div className="max-w-2xl mx-auto space-y-4">
+                {history.length < 2 ? <div className="text-center py-12 text-gray-500 text-sm">Submit 2+ attempts to see your progress chart.</div> : (
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                    <div className="text-xs font-semibold text-gray-400 mb-3">Band Score Trend</div>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <LineChart data={history.map((h, i) => ({ attempt: `#${i + 1}`, ...h }))} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
+                        <XAxis dataKey="attempt" tick={{ fill: "#6b7280", fontSize: 10 }} /><YAxis domain={[4, 9]} tick={{ fill: "#6b7280", fontSize: 10 }} />
+                        <Tooltip contentStyle={{ background: "#1f2937", border: "1px solid #374151", borderRadius: 8, fontSize: 11 }} />
+                        <Line type="monotone" dataKey="overall" stroke="#60a5fa" strokeWidth={2.5} dot={{ fill: "#60a5fa", r: 4 }} name="Overall" />
+                        <Line type="monotone" dataKey="TA" stroke="#34d399" strokeWidth={1.5} dot={false} name="TA" />
+                        <Line type="monotone" dataKey="CC" stroke="#fbbf24" strokeWidth={1.5} dot={false} name="CC" />
+                        <Line type="monotone" dataKey="LR" stroke="#f87171" strokeWidth={1.5} dot={false} name="LR" />
+                        <Line type="monotone" dataKey="GRA" stroke="#a78bfa" strokeWidth={1.5} dot={false} name="GRA" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                    <div className="flex gap-3 mt-1 flex-wrap">{[["Overall", "#60a5fa"], ["TA", "#34d399"], ["CC", "#fbbf24"], ["LR", "#f87171"], ["GRA", "#a78bfa"]].map(([l, c]) => <div key={l} className="flex items-center gap-1"><div className="w-4 h-0.5" style={{ backgroundColor: c }} /><span className="text-xs text-gray-500">{l}</span></div>)}</div>
+                  </div>
+                )}
+                <div className="bg-gray-800 border border-gray-700 rounded-xl p-4">
+                  <div className="text-xs font-semibold text-gray-400 mb-3">Attempt History</div>
+                  {history.map((h, i) => (
+                    <div key={i} className="flex items-center gap-3 py-2 border-b border-gray-700 last:border-0 flex-wrap">
+                      <span className="text-xs text-gray-500 w-16">Attempt {i + 1}</span>
+                      <span className="text-sm font-bold" style={{ color: bandColor(h.overall) }}>{h.overall}</span>
+                      <div className="flex gap-2 ml-auto flex-wrap">{["TA", "CC", "LR", "GRA"].map(k => <span key={k} className="text-xs text-gray-400">{k}: <span style={{ color: bandColor(h[k]) }}>{h[k]}</span></span>)}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {loading && (
+        <div className="fixed inset-0 bg-gray-950 bg-opacity-80 flex items-center justify-center z-50">
+          <div className="bg-gray-800 border border-gray-700 rounded-2xl px-8 py-6 text-center">
+            <div className="flex gap-1.5 justify-center mb-3">{[0, 1, 2].map(i => <div key={i} className="w-2.5 h-2.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />)}</div>
+            <div className="text-sm text-gray-300">{loadingMsg}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
