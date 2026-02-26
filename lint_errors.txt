@@ -1,0 +1,26 @@
+﻿
+C:\Users\cuong\Documents\ielts-writing-tutor\src\app\(protected)\admin\questions\page.tsx
+   34:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  144:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\cuong\Documents\ielts-writing-tutor\src\app\(protected)\dashboard\page.tsx
+  161:10  warning  'BandGauge' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\cuong\Documents\ielts-writing-tutor\src\app\(protected)\practice\page.tsx
+  108:6   warning  React Hook useEffect has a missing dependency: 'handleSubmit'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  140:17  error    Unexpected any. Specify a different type                                                                         @typescript-eslint/no-explicit-any
+
+C:\Users\cuong\Documents\ielts-writing-tutor\src\components\QuestionCreateForm.tsx
+  38:39  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  66:32  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\cuong\Documents\ielts-writing-tutor\src\components\Task1Instructions.tsx
+  45:33  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:36  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  62:41  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\cuong\Documents\ielts-writing-tutor\src\lib\supabase\middleware.ts
+  15:70  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 11 problems (9 errors, 2 warnings)
+
