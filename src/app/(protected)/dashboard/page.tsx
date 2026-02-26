@@ -94,17 +94,17 @@ OUTPUT FORMAT — respond ONLY with this exact JSON (no markdown, no preamble):
 
 // ─── PROMPTS DATA ──────────────────────────────────────────────────────────────
 const T2_PROMPTS = [
-  { id:"t2_1", type:"Opinion", text:"Some people believe that the best way to improve public health is by increasing the number of sports facilities. Others, however, think that this would have little effect on public health and that other measures are required. Discuss both views and give your own opinion." },
-  { id:"t2_2", type:"Problem/Solution", text:"In many cities, the amount of traffic is increasing, causing problems of pollution and gridlock. What are the causes of this problem? What measures could be taken to reduce it?" },
-  { id:"t2_3", type:"Two-Part Question", text:"Many people believe that social media has had a profoundly negative effect on individuals and society. To what extent do you agree or disagree? What changes do you think social media companies should make?" },
-  { id:"t2_4", type:"Advantages/Disadvantages", text:"In many countries, more and more people are choosing to work from home rather than commute to an office. What are the advantages and disadvantages of this trend?" },
-  { id:"t2_5", type:"Direct Question", text:"In some countries, young people are encouraged to work or travel for a year between finishing high school and starting university studies. Discuss the advantages and disadvantages for young people who decide to do this." },
+  { id: "t2_1", type: "Opinion", text: "Some people believe that the best way to improve public health is by increasing the number of sports facilities. Others, however, think that this would have little effect on public health and that other measures are required. Discuss both views and give your own opinion." },
+  { id: "t2_2", type: "Problem/Solution", text: "In many cities, the amount of traffic is increasing, causing problems of pollution and gridlock. What are the causes of this problem? What measures could be taken to reduce it?" },
+  { id: "t2_3", type: "Two-Part Question", text: "Many people believe that social media has had a profoundly negative effect on individuals and society. To what extent do you agree or disagree? What changes do you think social media companies should make?" },
+  { id: "t2_4", type: "Advantages/Disadvantages", text: "In many countries, more and more people are choosing to work from home rather than commute to an office. What are the advantages and disadvantages of this trend?" },
+  { id: "t2_5", type: "Direct Question", text: "In some countries, young people are encouraged to work or travel for a year between finishing high school and starting university studies. Discuss the advantages and disadvantages for young people who decide to do this." },
 ];
 
 const T1_PROMPTS = [
-  { id:"t1_1", type:"Bar Chart", text:"The bar chart below shows the percentage of students achieving a band score of 7 or above in each IELTS section (Reading, Listening, Writing, Speaking) at three language schools in Ho Chi Minh City in 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[Chart data: Jaxtina: R=48%, L=52%, W=31%, S=38% | British Council: R=55%, L=60%, W=40%, S=42% | IDP: R=42%, L=45%, W=28%, S=35%]" },
-  { id:"t1_2", type:"Line Graph", text:"The graph below shows changes in the number of students enrolled in English language courses in Vietnam between 2015 and 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[Data: 2015: 180,000 | 2017: 220,000 | 2019: 310,000 | 2021: 280,000 (COVID dip) | 2022: 340,000 | 2024: 520,000]" },
-  { id:"t1_3", type:"Pie Chart", text:"The two pie charts below show how students at a language school spent their self-study time in 2010 and 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[2010: Grammar: 35%, Vocabulary: 25%, Reading: 20%, Listening: 15%, Speaking practice: 5%] [2024: Online apps: 30%, Speaking practice: 22%, Listening: 20%, Grammar: 15%, Reading: 8%, Vocabulary: 5%]" },
+  { id: "t1_1", type: "Bar Chart", text: "The bar chart below shows the percentage of students achieving a band score of 7 or above in each IELTS section (Reading, Listening, Writing, Speaking) at three language schools in Ho Chi Minh City in 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[Chart data: Jaxtina: R=48%, L=52%, W=31%, S=38% | British Council: R=55%, L=60%, W=40%, S=42% | IDP: R=42%, L=45%, W=28%, S=35%]" },
+  { id: "t1_2", type: "Line Graph", text: "The graph below shows changes in the number of students enrolled in English language courses in Vietnam between 2015 and 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[Data: 2015: 180,000 | 2017: 220,000 | 2019: 310,000 | 2021: 280,000 (COVID dip) | 2022: 340,000 | 2024: 520,000]" },
+  { id: "t1_3", type: "Pie Chart", text: "The two pie charts below show how students at a language school spent their self-study time in 2010 and 2024. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.\n\n[2010: Grammar: 35%, Vocabulary: 25%, Reading: 20%, Listening: 15%, Speaking practice: 5%] [2024: Online apps: 30%, Speaking practice: 22%, Listening: 20%, Grammar: 15%, Reading: 8%, Vocabulary: 5%]" },
 ];
 
 const WRITING_TIPS = [
@@ -119,18 +119,24 @@ const WRITING_TIPS = [
 ];
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────────
-const countWords = (s) => s.trim().split(/\s+/).filter(Boolean).length;
-const bandColor = (b) => b >= 7 ? "text-teal-600" : b >= 6 ? "text-indigo-600" : b >= 5 ? "text-amber-600" : "text-red-600";
-const bandBg = (b) => b >= 7 ? "bg-teal-50 border-teal-200" : b >= 6 ? "bg-indigo-50 border-indigo-200" : b >= 5 ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
-const bandLabel = (b) => b >= 8 ? "Expert" : b >= 7 ? "Good User" : b >= 6 ? "Competent" : b >= 5 ? "Modest" : b >= 4 ? "Limited" : "Extremely Limited";
+const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
+const bandColor = (b: number) => b >= 7 ? "text-teal-600" : b >= 6 ? "text-indigo-600" : b >= 5 ? "text-amber-600" : "text-red-600";
+const bandBg = (b: number) => b >= 7 ? "bg-teal-50 border-teal-200" : b >= 6 ? "bg-indigo-50 border-indigo-200" : b >= 5 ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
+const bandLabel = (b: number) => b >= 8 ? "Expert" : b >= 7 ? "Good User" : b >= 6 ? "Competent" : b >= 5 ? "Modest" : b >= 4 ? "Limited" : "Extremely Limited";
 
-function Timer({ secs, running, onEnd }) {
+function Timer({ secs, running, onEnd }: { secs: number, running: boolean, onEnd: () => void }) {
   const [t, setT] = useState(secs);
-  const ref = useRef();
+  const ref = useRef<NodeJS.Timeout>(null as unknown as NodeJS.Timeout);
+  const onEndRef = useRef(onEnd);
+
   useEffect(() => {
-    if (!running) { clearInterval(ref.current); return; }
-    ref.current = setInterval(() => setT(p => { if (p <= 1) { clearInterval(ref.current); onEnd(); return 0; } return p - 1; }), 1000);
-    return () => clearInterval(ref.current);
+    onEndRef.current = onEnd;
+  }, [onEnd]);
+
+  useEffect(() => {
+    if (!running) { clearInterval(ref.current as NodeJS.Timeout); return; }
+    ref.current = setInterval(() => setT(p => { if (p <= 1) { clearInterval(ref.current as NodeJS.Timeout); onEndRef.current(); return 0; } return p - 1; }), 1000);
+    return () => clearInterval(ref.current as NodeJS.Timeout);
   }, [running]);
   const m = Math.floor(t / 60), s = t % 60;
   const pct = (t / secs) * 100;
@@ -146,13 +152,13 @@ function Timer({ secs, running, onEnd }) {
         </svg>
       </div>
       <span className={`font-mono text-sm font-bold ${urgent ? "text-red-600 animate-pulse" : "text-slate-600"}`}>
-        {String(m).padStart(2,"0")}:{String(s).padStart(2,"0")}
+        {String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
       </span>
     </div>
   );
 }
 
-function BandGauge({ band }) {
+function BandGauge({ band }: { band: number }) {
   const pct = ((band - 1) / 8) * 100;
   const color = band >= 7 ? "#0d9488" : band >= 6 ? "#6366f1" : band >= 5 ? "#f59e0b" : "#ef4444";
   return (
@@ -168,9 +174,19 @@ function BandGauge({ band }) {
 }
 
 // ─── FEEDBACK DISPLAY ──────────────────────────────────────────────────────────
-function FeedbackPanel({ feedback, essay }) {
+function FeedbackPanel({ feedback }: { feedback: Record<string, unknown> }) {
   const [tab, setTab] = useState("overview");
-  const f = feedback;
+  const f = feedback as {
+    overallBand: number;
+    taskType: string;
+    wordCount: number;
+    wordCountNote?: string;
+    criteriaScores: Record<string, { band: number; label: string; feedback: string }>;
+    examinerSummary: string;
+    comparativeLevel: string;
+    priorityImprovements?: string[];
+    modelParagraph: string;
+  };
   const criteria = Object.entries(f.criteriaScores);
 
   return (
@@ -189,7 +205,7 @@ function FeedbackPanel({ feedback, essay }) {
           </div>
         </div>
         {f.wordCountNote && (
-          <div className={`text-xs px-3 py-2 rounded-lg ${f.wordCount < 150 || (f.taskType==="Task 2" && f.wordCount < 250) ? "bg-red-400/30 text-red-100" : "bg-white/10 text-teal-100"}`}>
+          <div className={`text-xs px-3 py-2 rounded-lg ${f.wordCount < 150 || (f.taskType === "Task 2" && f.wordCount < 250) ? "bg-red-400/30 text-red-100" : "bg-white/10 text-teal-100"}`}>
             📝 {f.wordCountNote}
           </div>
         )}
@@ -197,7 +213,7 @@ function FeedbackPanel({ feedback, essay }) {
 
       {/* 4 Criteria Cards */}
       <div className="grid grid-cols-2 gap-3">
-        {criteria.map(([key, c]) => (
+        {criteria.map(([key, c]: [string, { band: number; label: string; feedback: string }]) => (
           <div key={key} className={`rounded-xl border p-3 ${bandBg(c.band)}`}>
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">{key}</p>
@@ -205,7 +221,7 @@ function FeedbackPanel({ feedback, essay }) {
             </div>
             <p className="text-xs font-semibold text-slate-700 mb-1">{c.label}</p>
             <div className="h-1.5 bg-white/60 rounded-full">
-              <div className="h-1.5 rounded-full transition-all" style={{ width:`${((c.band-1)/8)*100}%`, background: c.band >= 7 ? "#0d9488" : c.band >= 6 ? "#6366f1" : c.band >= 5 ? "#f59e0b" : "#ef4444" }} />
+              <div className="h-1.5 rounded-full transition-all" style={{ width: `${((c.band - 1) / 8) * 100}%`, background: c.band >= 7 ? "#0d9488" : c.band >= 6 ? "#6366f1" : c.band >= 5 ? "#f59e0b" : "#ef4444" }} />
             </div>
           </div>
         ))}
@@ -213,9 +229,9 @@ function FeedbackPanel({ feedback, essay }) {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-        {[["overview","📋 Overview"],["criteria","🔍 Criteria"],["improve","🎯 Improve"],["model","✍️ Model"]].map(([k,l]) => (
+        {[["overview", "📋 Overview"], ["criteria", "🔍 Criteria"], ["improve", "🎯 Improve"], ["model", "✍️ Model"]].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)}
-            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab===k ? "bg-white text-teal-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+            className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${tab === k ? "bg-white text-teal-700 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
             {l}
           </button>
         ))}
@@ -225,7 +241,7 @@ function FeedbackPanel({ feedback, essay }) {
       {tab === "overview" && (
         <div className="space-y-3">
           <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Examiner's Summary</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Examiner&apos;s Summary</p>
             <p className="text-sm text-slate-700 leading-relaxed">{f.examinerSummary}</p>
           </div>
           <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
@@ -236,11 +252,11 @@ function FeedbackPanel({ feedback, essay }) {
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Band Score Breakdown</p>
             <div className="space-y-2">
-              {criteria.map(([key, c]) => (
+              {criteria.map(([key, c]: [string, { band: number; label: string; feedback: string }]) => (
                 <div key={key} className="flex items-center gap-3">
                   <span className="text-xs text-slate-500 w-8 font-mono">{key}</span>
                   <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-3 rounded-full transition-all" style={{ width:`${((c.band-1)/8)*100}%`, background: c.band >= 7 ? "#0d9488" : c.band >= 6 ? "#6366f1" : c.band >= 5 ? "#f59e0b" : "#ef4444" }} />
+                    <div className="h-3 rounded-full transition-all" style={{ width: `${((c.band - 1) / 8) * 100}%`, background: c.band >= 7 ? "#0d9488" : c.band >= 6 ? "#6366f1" : c.band >= 5 ? "#f59e0b" : "#ef4444" }} />
                   </div>
                   <span className={`text-sm font-bold w-8 text-right ${bandColor(c.band)}`}>{c.band}</span>
                   <span className="text-xs text-slate-400 w-20">{bandLabel(c.band)}</span>
@@ -249,7 +265,7 @@ function FeedbackPanel({ feedback, essay }) {
               <div className="flex items-center gap-3 pt-2 border-t border-slate-100 mt-2">
                 <span className="text-xs font-bold text-slate-700 w-8">AVG</span>
                 <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-3 rounded-full bg-teal-600" style={{ width:`${((f.overallBand-1)/8)*100}%` }} />
+                  <div className="h-3 rounded-full bg-teal-600" style={{ width: `${((f.overallBand - 1) / 8) * 100}%` }} />
                 </div>
                 <span className={`text-sm font-black w-8 text-right ${bandColor(f.overallBand)}`}>{f.overallBand}</span>
                 <span className="text-xs font-semibold text-teal-700 w-20">{bandLabel(f.overallBand)}</span>
@@ -261,7 +277,7 @@ function FeedbackPanel({ feedback, essay }) {
 
       {tab === "criteria" && (
         <div className="space-y-3">
-          {criteria.map(([key, c]) => (
+          {criteria.map(([key, c]: [string, { band: number; label: string; feedback: string }]) => (
             <div key={key} className={`rounded-xl border p-4 ${bandBg(c.band)}`}>
               <div className="flex items-center justify-between mb-2">
                 <div>
@@ -284,9 +300,9 @@ function FeedbackPanel({ feedback, essay }) {
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <p className="text-xs font-bold text-teal-600 uppercase tracking-wide mb-3">🎯 Priority Improvements (Examiner Recommendations)</p>
             <div className="space-y-3">
-              {(f.priorityImprovements || []).map((tip, i) => (
+              {(f.priorityImprovements || []).map((tip: string, i: number) => (
                 <div key={i} className="flex gap-3 p-3 bg-slate-50 rounded-xl">
-                  <span className="w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{i+1}</span>
+                  <span className="w-6 h-6 rounded-full bg-teal-600 text-white text-xs font-bold flex items-center justify-center flex-shrink-0">{i + 1}</span>
                   <p className="text-sm text-slate-700">{tip}</p>
                 </div>
               ))}
@@ -298,7 +314,7 @@ function FeedbackPanel({ feedback, essay }) {
       {tab === "model" && (
         <div className="space-y-3">
           <div className="bg-white border border-slate-200 rounded-xl p-4">
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Examiner's Model Paragraph (Band 7+ Level)</p>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Examiner&apos;s Model Paragraph (Band 7+ Level)</p>
             <p className="text-xs text-slate-400 mb-3">The examiner has rewritten one paragraph from your essay to demonstrate Band 7+ writing quality on the same argument.</p>
             <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl">
               <p className="text-sm text-slate-700 leading-relaxed italic">{f.modelParagraph}</p>
@@ -315,20 +331,20 @@ function FeedbackPanel({ feedback, essay }) {
 }
 
 // ─── TIPS SIDEBAR ──────────────────────────────────────────────────────────────
-function TipsSidebar({ taskType }) {
-  const tips = WRITING_TIPS.filter((_, i) => taskType === "task1" ? [0,2,3,4,5,6].includes(i) : [0,1,2,3,5,6,7].includes(i));
-  const [open, setOpen] = useState(null);
+function TipsSidebar({ taskType }: { taskType: string }) {
+  const tips = WRITING_TIPS.filter((_, i) => taskType === "task1" ? [0, 2, 3, 4, 5, 6].includes(i) : [0, 1, 2, 3, 5, 6, 7].includes(i));
+  const [open, setOpen] = useState<number | null>(null);
   return (
     <div className="space-y-2">
       <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">📚 Examiner Tips</p>
       {tips.map((t, i) => (
-        <div key={i} className={`rounded-xl border cursor-pointer transition-all ${open===i ? "border-teal-300 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-200"}`}
-          onClick={() => setOpen(open===i ? null : i)}>
+        <div key={i} className={`rounded-xl border cursor-pointer transition-all ${open === i ? "border-teal-300 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-200"}`}
+          onClick={() => setOpen(open === i ? null : i)}>
           <div className="px-3 py-2.5 flex items-start gap-2">
-            <span className={`text-xs px-1.5 py-0.5 rounded font-bold flex-shrink-0 ${t.source==="IELTSLiz" ? "bg-rose-100 text-rose-600" : "bg-indigo-100 text-indigo-600"}`}>{t.source}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded font-bold flex-shrink-0 ${t.source === "IELTSLiz" ? "bg-rose-100 text-rose-600" : "bg-indigo-100 text-indigo-600"}`}>{t.source}</span>
             <p className="text-xs font-semibold text-slate-700">{t.title}</p>
           </div>
-          {open===i && <div className="px-3 pb-3 text-xs text-slate-600 leading-relaxed">{t.tip}</div>}
+          {open === i && <div className="px-3 pb-3 text-xs text-slate-600 leading-relaxed">{t.tip}</div>}
         </div>
       ))}
     </div>
@@ -350,7 +366,7 @@ export default function App() {
   const [useCustom, setUseCustom] = useState(false);
 
   const prompts = taskType === "task2" ? T2_PROMPTS : T1_PROMPTS;
-  const currentPrompt = useCustom ? { id:"custom", type:"Custom", text: customPrompt } : prompts.find(p => p.id === promptId) || prompts[0];
+  const currentPrompt = useCustom ? { id: "custom", type: "Custom", text: customPrompt } : prompts.find(p => p.id === promptId) || prompts[0];
   const wordCount = countWords(essay);
   const minWords = taskType === "task1" ? 150 : 250;
   const recWords = taskType === "task1" ? "150–190" : "250–300";
@@ -358,11 +374,11 @@ export default function App() {
 
   const generateAIPrompt = async () => {
     setAiGenerating(true);
-    const topics = ["climate change","technology in education","globalisation","healthcare","urban development","immigration","social media","crime and punishment","gender equality","ageing population"];
-    const topic = topics[Math.floor(Math.random()*topics.length)];
+    const topics = ["climate change", "technology in education", "globalisation", "healthcare", "urban development", "immigration", "social media", "crime and punishment", "gender equality", "ageing population"];
+    const topic = topics[Math.floor(Math.random() * topics.length)];
     const type = taskType === "task2"
-      ? ["Opinion (To what extent do you agree?)", "Discuss both views and give your opinion", "Problem and solution", "Advantages and disadvantages", "Two direct questions"][Math.floor(Math.random()*5)]
-      : ["Bar chart", "Line graph", "Pie chart", "Table", "Process diagram"][Math.floor(Math.random()*5)];
+      ? ["Opinion (To what extent do you agree?)", "Discuss both views and give your opinion", "Problem and solution", "Advantages and disadvantages", "Two direct questions"][Math.floor(Math.random() * 5)]
+      : ["Bar chart", "Line graph", "Pie chart", "Table", "Process diagram"][Math.floor(Math.random() * 5)];
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -388,15 +404,15 @@ export default function App() {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 2000,
           system: EXAMINER_SYSTEM,
-          messages: [{ role:"user", content:`IELTS ${taskType === "task2" ? "Writing Task 2" : "Writing Task 1"} Question:\n${currentPrompt.text}\n\nStudent's Essay (${wordCount} words):\n${essay}\n\nMark this essay strictly according to the official IELTS band descriptors. Return ONLY the JSON object.` }]
+          messages: [{ role: "user", content: `IELTS ${taskType === "task2" ? "Writing Task 2" : "Writing Task 1"} Question:\n${currentPrompt.text}\n\nStudent's Essay (${wordCount} words):\n${essay}\n\nMark this essay strictly according to the official IELTS band descriptors. Return ONLY the JSON object.` }]
         })
       });
       const data = await res.json();
       const raw = data.content?.[0]?.text || "{}";
-      const cleaned = raw.replace(/```json|```/g,"").trim();
+      const cleaned = raw.replace(/```json|```/g, "").trim();
       const parsed = JSON.parse(cleaned);
       setFeedback(parsed); setSubmitted(true);
-    } catch(e) { setError(`Marking error: ${e.message}. Please try again.`); }
+    } catch (e: unknown) { setError(`Marking error: ${e instanceof Error ? e.message : String(e)}. Please try again.`); }
     setLoading(false);
   };
 
@@ -430,10 +446,10 @@ export default function App() {
         {/* Task Type Selector */}
         {!submitted && (
           <div className="flex gap-2 mb-5">
-            {[["task2","Task 2 – Essay","40 min · 250+ words"],["task1","Task 1 – Report","20 min · 150+ words"]].map(([k,l,sub]) => (
-              <button key={k} onClick={() => { setTaskType(k); setPromptId(k==="task2"?"t2_1":"t1_1"); setUseCustom(false); reset(); }}
-                className={`flex-1 py-3 rounded-xl border text-left px-4 transition-all ${taskType===k ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-300"}`}>
-                <p className={`font-bold text-sm ${taskType===k ? "text-teal-700" : "text-slate-700"}`}>{l}</p>
+            {[["task2", "Task 2 – Essay", "40 min · 250+ words"], ["task1", "Task 1 – Report", "20 min · 150+ words"]].map(([k, l, sub]) => (
+              <button key={k} onClick={() => { setTaskType(k); setPromptId(k === "task2" ? "t2_1" : "t1_1"); setUseCustom(false); reset(); }}
+                className={`flex-1 py-3 rounded-xl border text-left px-4 transition-all ${taskType === k ? "border-teal-500 bg-teal-50" : "border-slate-200 bg-white hover:border-teal-300"}`}>
+                <p className={`font-bold text-sm ${taskType === k ? "text-teal-700" : "text-slate-700"}`}>{l}</p>
                 <p className="text-xs text-slate-400">{sub}</p>
               </button>
             ))}
@@ -456,7 +472,7 @@ export default function App() {
                 <div className="flex gap-2 flex-wrap mb-3">
                   {prompts.map(p => (
                     <button key={p.id} onClick={() => { setPromptId(p.id); setUseCustom(false); }}
-                      className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${!useCustom && promptId===p.id ? "bg-teal-600 text-white border-teal-600" : "border-slate-200 text-slate-600 hover:border-teal-300"}`}>
+                      className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${!useCustom && promptId === p.id ? "bg-teal-600 text-white border-teal-600" : "border-slate-200 text-slate-600 hover:border-teal-300"}`}>
                       {p.type}
                     </button>
                   ))}
@@ -467,7 +483,7 @@ export default function App() {
                     className="w-full border border-indigo-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50 resize-none mb-2" />
                 )}
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded mr-2 ${taskType==="task2" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"}`}>{currentPrompt.type}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded mr-2 ${taskType === "task2" ? "bg-teal-100 text-teal-700" : "bg-amber-100 text-amber-700"}`}>{currentPrompt.type}</span>
                   <p className="text-sm text-slate-700 mt-2 leading-relaxed whitespace-pre-line">{currentPrompt.text}</p>
                   <p className="text-xs text-slate-400 mt-2">Write at least {minWords} words. Recommended: {recWords} words.</p>
                 </div>
@@ -493,7 +509,7 @@ export default function App() {
                 <div className="px-4 pb-3">
                   <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                     <div className={`h-1.5 rounded-full transition-all ${wordCount >= minWords ? "bg-teal-500" : "bg-amber-400"}`}
-                      style={{ width: `${Math.min((wordCount / (minWords*1.2))*100, 100)}%` }} />
+                      style={{ width: `${Math.min((wordCount / (minWords * 1.2)) * 100, 100)}%` }} />
                   </div>
                 </div>
                 <div className="px-4 pb-4 flex items-center justify-between">
@@ -519,7 +535,7 @@ export default function App() {
                     {essay}
                   </div>
                 </div>
-                {feedback && <FeedbackPanel feedback={feedback} essay={essay} />}
+                {feedback && <FeedbackPanel feedback={feedback as Record<string, unknown>} />}
               </div>
             )}
           </div>
@@ -532,7 +548,7 @@ export default function App() {
             <div className="bg-white rounded-2xl border border-slate-200 p-4">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Band Score Reference</p>
               <div className="space-y-1.5">
-                {[["9","Expert user","Fully operational command"],["8","Very good user","Fully operational, rare errors"],["7","Good user","Operational, some inaccuracies"],["6","Competent user","Effective, some inaccuracies"],["5","Modest user","Partial command"],["4","Limited user","Basic competence"],].map(([b, l, d]) => (
+                {[["9", "Expert user", "Fully operational command"], ["8", "Very good user", "Fully operational, rare errors"], ["7", "Good user", "Operational, some inaccuracies"], ["6", "Competent user", "Effective, some inaccuracies"], ["5", "Modest user", "Partial command"], ["4", "Limited user", "Basic competence"],].map(([b, l, d]) => (
                   <div key={b} className="flex items-center gap-2">
                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${bandBg(parseFloat(b))} ${bandColor(parseFloat(b))} border`}>{b}</span>
                     <div>
